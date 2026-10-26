@@ -1,0 +1,262 @@
+// Basic ISA self-test.
+// FAIL = memory[128] / PC 512; PASS = memory[224] / PC 896.
+// This is NOT a hazard-free pipeline test.
+// It includes dependency checks via BNE/JAL.
+// Put this inside the cpu_top_tb
+
+// Test 0: Bootstrap BNE and ADDI checks
+cpu_top_dut.instruction_memory_unit.memory[0] = 32'h00000513; // addi x10, x0, 0 | PC 0
+cpu_top_dut.instruction_memory_unit.memory[1] = 32'h00100193; // addi x3, x0, 1 | PC 4
+cpu_top_dut.instruction_memory_unit.memory[2] = 32'h00200213; // addi x4, x0, 2 | PC 8
+cpu_top_dut.instruction_memory_unit.memory[3] = 32'h00419463; // bne x3, x4, word_5 | PC 12
+cpu_top_dut.instruction_memory_unit.memory[4] = 32'h1F00006F; // jal x0, FAIL | PC 16
+cpu_top_dut.instruction_memory_unit.memory[5] = 32'h1E319663; // bne x3, x3, FAIL | PC 20
+cpu_top_dut.instruction_memory_unit.memory[6] = 32'h00500093; // addi x1, x0, 5 | PC 24
+cpu_top_dut.instruction_memory_unit.memory[7] = 32'h00600113; // addi x2, x0, 6 | PC 28
+
+// Test 1: ADD with x1=5, x2=6
+cpu_top_dut.instruction_memory_unit.memory[8] = 32'h00100513; // addi x10, x0, 1 | PC 32
+cpu_top_dut.instruction_memory_unit.memory[9] = 32'h002081B3; // add x3, x1, x2 | PC 36
+cpu_top_dut.instruction_memory_unit.memory[10] = 32'h00B00213; // addi x4, x0, 11 | PC 40
+cpu_top_dut.instruction_memory_unit.memory[11] = 32'h1C419A63; // bne x3, x4, FAIL | PC 44
+
+// Test 2: SUB with x1=5, x2=6
+cpu_top_dut.instruction_memory_unit.memory[12] = 32'h00200513; // addi x10, x0, 2 | PC 48
+cpu_top_dut.instruction_memory_unit.memory[13] = 32'h402081B3; // sub x3, x1, x2 | PC 52
+cpu_top_dut.instruction_memory_unit.memory[14] = 32'hFFF00213; // addi x4, x0, -1 | PC 56
+cpu_top_dut.instruction_memory_unit.memory[15] = 32'h1C419263; // bne x3, x4, FAIL | PC 60
+
+// Test 3: SLL with x1=5, x2=6
+cpu_top_dut.instruction_memory_unit.memory[16] = 32'h00300513; // addi x10, x0, 3 | PC 64
+cpu_top_dut.instruction_memory_unit.memory[17] = 32'h002091B3; // sll x3, x1, x2 | PC 68
+cpu_top_dut.instruction_memory_unit.memory[18] = 32'h14000213; // addi x4, x0, 320 | PC 72
+cpu_top_dut.instruction_memory_unit.memory[19] = 32'h1A419A63; // bne x3, x4, FAIL | PC 76
+
+// Test 4: SRL with x1=5, x2=6
+cpu_top_dut.instruction_memory_unit.memory[20] = 32'h00400513; // addi x10, x0, 4 | PC 80
+cpu_top_dut.instruction_memory_unit.memory[21] = 32'h0020D1B3; // srl x3, x1, x2 | PC 84
+cpu_top_dut.instruction_memory_unit.memory[22] = 32'h00000213; // addi x4, x0, 0 | PC 88
+cpu_top_dut.instruction_memory_unit.memory[23] = 32'h1A419263; // bne x3, x4, FAIL | PC 92
+
+// Test 5: SRA with x1=5, x2=6
+cpu_top_dut.instruction_memory_unit.memory[24] = 32'h00500513; // addi x10, x0, 5 | PC 96
+cpu_top_dut.instruction_memory_unit.memory[25] = 32'h4020D1B3; // sra x3, x1, x2 | PC 100
+cpu_top_dut.instruction_memory_unit.memory[26] = 32'h00000213; // addi x4, x0, 0 | PC 104
+cpu_top_dut.instruction_memory_unit.memory[27] = 32'h18419A63; // bne x3, x4, FAIL | PC 108
+
+// Test 6: AND with x1=5, x2=6
+cpu_top_dut.instruction_memory_unit.memory[28] = 32'h00600513; // addi x10, x0, 6 | PC 112
+cpu_top_dut.instruction_memory_unit.memory[29] = 32'h0020F1B3; // and x3, x1, x2 | PC 116
+cpu_top_dut.instruction_memory_unit.memory[30] = 32'h00400213; // addi x4, x0, 4 | PC 120
+cpu_top_dut.instruction_memory_unit.memory[31] = 32'h18419263; // bne x3, x4, FAIL | PC 124
+
+// Test 7: OR with x1=5, x2=6
+cpu_top_dut.instruction_memory_unit.memory[32] = 32'h00700513; // addi x10, x0, 7 | PC 128
+cpu_top_dut.instruction_memory_unit.memory[33] = 32'h0020E1B3; // or x3, x1, x2 | PC 132
+cpu_top_dut.instruction_memory_unit.memory[34] = 32'h00700213; // addi x4, x0, 7 | PC 136
+cpu_top_dut.instruction_memory_unit.memory[35] = 32'h16419A63; // bne x3, x4, FAIL | PC 140
+
+// Test 8: XOR with x1=5, x2=6
+cpu_top_dut.instruction_memory_unit.memory[36] = 32'h00800513; // addi x10, x0, 8 | PC 144
+cpu_top_dut.instruction_memory_unit.memory[37] = 32'h0020C1B3; // xor x3, x1, x2 | PC 148
+cpu_top_dut.instruction_memory_unit.memory[38] = 32'h00300213; // addi x4, x0, 3 | PC 152
+cpu_top_dut.instruction_memory_unit.memory[39] = 32'h16419263; // bne x3, x4, FAIL | PC 156
+
+// Test 9: SLT with x1=5, x2=6
+cpu_top_dut.instruction_memory_unit.memory[40] = 32'h00900513; // addi x10, x0, 9 | PC 160
+cpu_top_dut.instruction_memory_unit.memory[41] = 32'h0020A1B3; // slt x3, x1, x2 | PC 164
+cpu_top_dut.instruction_memory_unit.memory[42] = 32'h00100213; // addi x4, x0, 1 | PC 168
+cpu_top_dut.instruction_memory_unit.memory[43] = 32'h14419A63; // bne x3, x4, FAIL | PC 172
+
+// Test 10: SLTU with x1=5, x2=6
+cpu_top_dut.instruction_memory_unit.memory[44] = 32'h00A00513; // addi x10, x0, 10 | PC 176
+cpu_top_dut.instruction_memory_unit.memory[45] = 32'h0020B1B3; // sltu x3, x1, x2 | PC 180
+cpu_top_dut.instruction_memory_unit.memory[46] = 32'h00100213; // addi x4, x0, 1 | PC 184
+cpu_top_dut.instruction_memory_unit.memory[47] = 32'h14419263; // bne x3, x4, FAIL | PC 188
+
+// Test 11: ADDI immediate -1
+cpu_top_dut.instruction_memory_unit.memory[48] = 32'h00B00513; // addi x10, x0, 11 | PC 192
+cpu_top_dut.instruction_memory_unit.memory[49] = 32'hFFF00193; // addi x3, x0, -1 | PC 196
+cpu_top_dut.instruction_memory_unit.memory[50] = 32'hFFF00213; // addi x4, x0, -1 | PC 200
+cpu_top_dut.instruction_memory_unit.memory[51] = 32'h12419A63; // bne x3, x4, FAIL | PC 204
+
+// Test 12: SLLI immediate 2
+cpu_top_dut.instruction_memory_unit.memory[52] = 32'h00C00513; // addi x10, x0, 12 | PC 208
+cpu_top_dut.instruction_memory_unit.memory[53] = 32'h00209193; // slli x3, x1, 2 | PC 212
+cpu_top_dut.instruction_memory_unit.memory[54] = 32'h01400213; // addi x4, x0, 20 | PC 216
+cpu_top_dut.instruction_memory_unit.memory[55] = 32'h12419263; // bne x3, x4, FAIL | PC 220
+
+// Test 13: SRLI immediate 2
+cpu_top_dut.instruction_memory_unit.memory[56] = 32'h00D00513; // addi x10, x0, 13 | PC 224
+cpu_top_dut.instruction_memory_unit.memory[57] = 32'h0020D193; // srli x3, x1, 2 | PC 228
+cpu_top_dut.instruction_memory_unit.memory[58] = 32'h00100213; // addi x4, x0, 1 | PC 232
+cpu_top_dut.instruction_memory_unit.memory[59] = 32'h10419A63; // bne x3, x4, FAIL | PC 236
+
+// Test 14: SRAI immediate 2
+cpu_top_dut.instruction_memory_unit.memory[60] = 32'h00E00513; // addi x10, x0, 14 | PC 240
+cpu_top_dut.instruction_memory_unit.memory[61] = 32'h4020D193; // srai x3, x1, 2 | PC 244
+cpu_top_dut.instruction_memory_unit.memory[62] = 32'h00100213; // addi x4, x0, 1 | PC 248
+cpu_top_dut.instruction_memory_unit.memory[63] = 32'h10419263; // bne x3, x4, FAIL | PC 252
+
+// Test 15: ANDI immediate 4
+cpu_top_dut.instruction_memory_unit.memory[64] = 32'h00F00513; // addi x10, x0, 15 | PC 256
+cpu_top_dut.instruction_memory_unit.memory[65] = 32'h0040F193; // andi x3, x1, 4 | PC 260
+cpu_top_dut.instruction_memory_unit.memory[66] = 32'h00400213; // addi x4, x0, 4 | PC 264
+cpu_top_dut.instruction_memory_unit.memory[67] = 32'h0E419A63; // bne x3, x4, FAIL | PC 268
+
+// Test 16: ORI immediate 4
+cpu_top_dut.instruction_memory_unit.memory[68] = 32'h01000513; // addi x10, x0, 16 | PC 272
+cpu_top_dut.instruction_memory_unit.memory[69] = 32'h0040E193; // ori x3, x1, 4 | PC 276
+cpu_top_dut.instruction_memory_unit.memory[70] = 32'h00500213; // addi x4, x0, 5 | PC 280
+cpu_top_dut.instruction_memory_unit.memory[71] = 32'h0E419263; // bne x3, x4, FAIL | PC 284
+
+// Test 17: XORI immediate 4
+cpu_top_dut.instruction_memory_unit.memory[72] = 32'h01100513; // addi x10, x0, 17 | PC 288
+cpu_top_dut.instruction_memory_unit.memory[73] = 32'h0040C193; // xori x3, x1, 4 | PC 292
+cpu_top_dut.instruction_memory_unit.memory[74] = 32'h00100213; // addi x4, x0, 1 | PC 296
+cpu_top_dut.instruction_memory_unit.memory[75] = 32'h0C419A63; // bne x3, x4, FAIL | PC 300
+
+// Test 18: SLTI immediate 4
+cpu_top_dut.instruction_memory_unit.memory[76] = 32'h01200513; // addi x10, x0, 18 | PC 304
+cpu_top_dut.instruction_memory_unit.memory[77] = 32'h0040A193; // slti x3, x1, 4 | PC 308
+cpu_top_dut.instruction_memory_unit.memory[78] = 32'h00000213; // addi x4, x0, 0 | PC 312
+cpu_top_dut.instruction_memory_unit.memory[79] = 32'h0C419263; // bne x3, x4, FAIL | PC 316
+
+// Test 19: SLTIU immediate 4
+cpu_top_dut.instruction_memory_unit.memory[80] = 32'h01300513; // addi x10, x0, 19 | PC 320
+cpu_top_dut.instruction_memory_unit.memory[81] = 32'h0040B193; // sltiu x3, x1, 4 | PC 324
+cpu_top_dut.instruction_memory_unit.memory[82] = 32'h00000213; // addi x4, x0, 0 | PC 328
+cpu_top_dut.instruction_memory_unit.memory[83] = 32'h0A419A63; // bne x3, x4, FAIL | PC 332
+
+// Test 20: ADDI with x1=5, negative immediate -7
+cpu_top_dut.instruction_memory_unit.memory[84] = 32'h01400513; // addi x10, x0, 20 | PC 336
+cpu_top_dut.instruction_memory_unit.memory[85] = 32'hFF908193; // addi x3, x1, -7 | PC 340
+cpu_top_dut.instruction_memory_unit.memory[86] = 32'hFFE00213; // addi x4, x0, -2 | PC 344
+cpu_top_dut.instruction_memory_unit.memory[87] = 32'h0A419263; // bne x3, x4, FAIL | PC 348
+
+// Test 21: ANDI with x1=5, negative immediate -2
+cpu_top_dut.instruction_memory_unit.memory[88] = 32'h01500513; // addi x10, x0, 21 | PC 352
+cpu_top_dut.instruction_memory_unit.memory[89] = 32'hFFE0F193; // andi x3, x1, -2 | PC 356
+cpu_top_dut.instruction_memory_unit.memory[90] = 32'h00400213; // addi x4, x0, 4 | PC 360
+cpu_top_dut.instruction_memory_unit.memory[91] = 32'h08419A63; // bne x3, x4, FAIL | PC 364
+
+// Test 22: ORI with x1=5, negative immediate -8
+cpu_top_dut.instruction_memory_unit.memory[92] = 32'h01600513; // addi x10, x0, 22 | PC 368
+cpu_top_dut.instruction_memory_unit.memory[93] = 32'hFF80E193; // ori x3, x1, -8 | PC 372
+cpu_top_dut.instruction_memory_unit.memory[94] = 32'hFFD00213; // addi x4, x0, -3 | PC 376
+cpu_top_dut.instruction_memory_unit.memory[95] = 32'h08419263; // bne x3, x4, FAIL | PC 380
+
+// Test 23: XORI with x1=5, negative immediate -1
+cpu_top_dut.instruction_memory_unit.memory[96] = 32'h01700513; // addi x10, x0, 23 | PC 384
+cpu_top_dut.instruction_memory_unit.memory[97] = 32'hFFF0C193; // xori x3, x1, -1 | PC 388
+cpu_top_dut.instruction_memory_unit.memory[98] = 32'hFFA00213; // addi x4, x0, -6 | PC 392
+cpu_top_dut.instruction_memory_unit.memory[99] = 32'h06419A63; // bne x3, x4, FAIL | PC 396
+
+// Test 24: SLTI with x1=5, negative immediate -1
+cpu_top_dut.instruction_memory_unit.memory[100] = 32'h01800513; // addi x10, x0, 24 | PC 400
+cpu_top_dut.instruction_memory_unit.memory[101] = 32'hFFF0A193; // slti x3, x1, -1 | PC 404
+cpu_top_dut.instruction_memory_unit.memory[102] = 32'h00000213; // addi x4, x0, 0 | PC 408
+cpu_top_dut.instruction_memory_unit.memory[103] = 32'h06419263; // bne x3, x4, FAIL | PC 412
+
+// Test 25: SLTIU with x1=5, negative immediate -1
+cpu_top_dut.instruction_memory_unit.memory[104] = 32'h01900513; // addi x10, x0, 25 | PC 416
+cpu_top_dut.instruction_memory_unit.memory[105] = 32'hFFF0B193; // sltiu x3, x1, -1 | PC 420
+cpu_top_dut.instruction_memory_unit.memory[106] = 32'h00100213; // addi x4, x0, 1 | PC 424
+cpu_top_dut.instruction_memory_unit.memory[107] = 32'h04419A63; // bne x3, x4, FAIL | PC 428
+cpu_top_dut.instruction_memory_unit.memory[108] = 32'hFFB00093; // addi x1, x0, -5 | PC 432
+cpu_top_dut.instruction_memory_unit.memory[109] = 32'h00200113; // addi x2, x0, 2 | PC 436
+
+// Test 26: SRA with x1=-5, x2=2
+cpu_top_dut.instruction_memory_unit.memory[110] = 32'h01A00513; // addi x10, x0, 26 | PC 440
+cpu_top_dut.instruction_memory_unit.memory[111] = 32'h4020D1B3; // sra x3, x1, x2 | PC 444
+cpu_top_dut.instruction_memory_unit.memory[112] = 32'hFFE00213; // addi x4, x0, -2 | PC 448
+cpu_top_dut.instruction_memory_unit.memory[113] = 32'h02419E63; // bne x3, x4, FAIL | PC 452
+
+// Test 27: SRL with x1=-5, x2=2
+cpu_top_dut.instruction_memory_unit.memory[114] = 32'h01B00513; // addi x10, x0, 27 | PC 456
+cpu_top_dut.instruction_memory_unit.memory[115] = 32'h0020D1B3; // srl x3, x1, x2 | PC 460
+cpu_top_dut.instruction_memory_unit.memory[116] = 32'h40000237; // lui x4, 0x40000 | PC 464
+cpu_top_dut.instruction_memory_unit.memory[117] = 32'hFFE20213; // addi x4, x4, -2 | PC 468
+cpu_top_dut.instruction_memory_unit.memory[118] = 32'h02419463; // bne x3, x4, FAIL | PC 472
+
+// Test 28: SLT with x1=-5, x2=2
+cpu_top_dut.instruction_memory_unit.memory[119] = 32'h01C00513; // addi x10, x0, 28 | PC 476
+cpu_top_dut.instruction_memory_unit.memory[120] = 32'h0020A1B3; // slt x3, x1, x2 | PC 480
+cpu_top_dut.instruction_memory_unit.memory[121] = 32'h00100213; // addi x4, x0, 1 | PC 484
+cpu_top_dut.instruction_memory_unit.memory[122] = 32'h00419C63; // bne x3, x4, FAIL | PC 488
+
+// Test 29: SLTU with x1=-5, x2=2
+cpu_top_dut.instruction_memory_unit.memory[123] = 32'h01D00513; // addi x10, x0, 29 | PC 492
+cpu_top_dut.instruction_memory_unit.memory[124] = 32'h0020B1B3; // sltu x3, x1, x2 | PC 496
+cpu_top_dut.instruction_memory_unit.memory[125] = 32'h00000213; // addi x4, x0, 0 | PC 500
+cpu_top_dut.instruction_memory_unit.memory[126] = 32'h00419463; // bne x3, x4, FAIL | PC 504
+
+// Skip reserved FAIL loop; resume test 30 at memory[132]
+cpu_top_dut.instruction_memory_unit.memory[127] = 32'h0140006F; // jal x0, CONTINUE_TEST30 | PC 508
+
+// FAIL: PC 512, pc[9:7] = 100
+cpu_top_dut.instruction_memory_unit.memory[128] = 32'h0000006F; // jal x0, FAIL | PC 512
+cpu_top_dut.instruction_memory_unit.memory[129] = 32'h00000013; // addi x0, x0, 0 | PC 516
+cpu_top_dut.instruction_memory_unit.memory[130] = 32'h00000013; // addi x0, x0, 0 | PC 520
+
+// Test 30: SRAI with x1=-5, shift 2
+cpu_top_dut.instruction_memory_unit.memory[132] = 32'h01E00513; // addi x10, x0, 30 | PC 528
+cpu_top_dut.instruction_memory_unit.memory[133] = 32'h4020D193; // srai x3, x1, 2 | PC 532
+cpu_top_dut.instruction_memory_unit.memory[134] = 32'hFFE00213; // addi x4, x0, -2 | PC 536
+cpu_top_dut.instruction_memory_unit.memory[135] = 32'hFE4192E3; // bne x3, x4, FAIL | PC 540
+cpu_top_dut.instruction_memory_unit.memory[136] = 32'h00800393; // addi x7, x0, 8 | PC 544
+cpu_top_dut.instruction_memory_unit.memory[137] = 32'h00500093; // addi x1, x0, 5 | PC 548
+
+// Test 31: SW/LW positive offset: address 0+4, value 5
+cpu_top_dut.instruction_memory_unit.memory[138] = 32'h01F00513; // addi x10, x0, 31 | PC 552
+cpu_top_dut.instruction_memory_unit.memory[139] = 32'h00102223; // sw x1, 4(x0) | PC 556
+cpu_top_dut.instruction_memory_unit.memory[140] = 32'h00402183; // lw x3, 4(x0) | PC 560
+cpu_top_dut.instruction_memory_unit.memory[141] = 32'h00500213; // addi x4, x0, 5 | PC 564
+cpu_top_dut.instruction_memory_unit.memory[142] = 32'hFC4194E3; // bne x3, x4, FAIL | PC 568
+cpu_top_dut.instruction_memory_unit.memory[143] = 32'hFFB00093; // addi x1, x0, -5 | PC 572
+
+// Test 32: SW/LW negative offset: address 8-4, value -5
+cpu_top_dut.instruction_memory_unit.memory[144] = 32'h02000513; // addi x10, x0, 32 | PC 576
+cpu_top_dut.instruction_memory_unit.memory[145] = 32'hFE13AE23; // sw x1, -4(x7) | PC 580
+cpu_top_dut.instruction_memory_unit.memory[146] = 32'hFFC3A183; // lw x3, -4(x7) | PC 584
+cpu_top_dut.instruction_memory_unit.memory[147] = 32'hFFB00213; // addi x4, x0, -5 | PC 588
+cpu_top_dut.instruction_memory_unit.memory[148] = 32'hFA4198E3; // bne x3, x4, FAIL | PC 592
+
+// Test 33: LUI upper immediate 4
+cpu_top_dut.instruction_memory_unit.memory[149] = 32'h02100513; // addi x10, x0, 33 | PC 596
+cpu_top_dut.instruction_memory_unit.memory[150] = 32'h000041B7; // lui x3, 4 | PC 600
+cpu_top_dut.instruction_memory_unit.memory[151] = 32'h00400213; // addi x4, x0, 4 | PC 604
+cpu_top_dut.instruction_memory_unit.memory[152] = 32'h00C21213; // slli x4, x4, 12 | PC 608
+cpu_top_dut.instruction_memory_unit.memory[153] = 32'hF8419EE3; // bne x3, x4, FAIL | PC 612
+
+// Test 34: LUI with bit 31 set
+cpu_top_dut.instruction_memory_unit.memory[154] = 32'h02200513; // addi x10, x0, 34 | PC 616
+cpu_top_dut.instruction_memory_unit.memory[155] = 32'h800001B7; // lui x3, 0x80000 | PC 620
+cpu_top_dut.instruction_memory_unit.memory[156] = 32'h00100213; // addi x4, x0, 1 | PC 624
+cpu_top_dut.instruction_memory_unit.memory[157] = 32'h01F21213; // slli x4, x4, 31 | PC 628
+cpu_top_dut.instruction_memory_unit.memory[158] = 32'hF84194E3; // bne x3, x4, FAIL | PC 632
+
+// Test 35: AUIPC upper immediate 4
+cpu_top_dut.instruction_memory_unit.memory[159] = 32'h02300513; // addi x10, x0, 35 | PC 636
+cpu_top_dut.instruction_memory_unit.memory[160] = 32'h00004197; // auipc x3, 4 | PC 640
+cpu_top_dut.instruction_memory_unit.memory[161] = 32'h00004237; // lui x4, 0x00004 | PC 644
+cpu_top_dut.instruction_memory_unit.memory[162] = 32'h28020213; // addi x4, x4, 640 | PC 648
+cpu_top_dut.instruction_memory_unit.memory[163] = 32'hF6419AE3; // bne x3, x4, FAIL | PC 652
+
+// Test 36: AUIPC negative upper immediate (-4096)
+cpu_top_dut.instruction_memory_unit.memory[164] = 32'h02400513; // addi x10, x0, 36 | PC 656
+cpu_top_dut.instruction_memory_unit.memory[165] = 32'hFFFFF197; // auipc x3, 0xfffff | PC 660
+cpu_top_dut.instruction_memory_unit.memory[166] = 32'hFFFFF237; // lui x4, 0xfffff | PC 664
+cpu_top_dut.instruction_memory_unit.memory[167] = 32'h29420213; // addi x4, x4, 660 | PC 668
+cpu_top_dut.instruction_memory_unit.memory[168] = 32'hF64190E3; // bne x3, x4, FAIL | PC 672
+cpu_top_dut.instruction_memory_unit.memory[169] = 32'h00000513; // addi x10, x0, 0 | PC 676
+
+// All tests passed: jump to PASS, followed by two NOPs
+cpu_top_dut.instruction_memory_unit.memory[170] = 32'h0D80006F; // jal x0, PASS | PC 680
+cpu_top_dut.instruction_memory_unit.memory[171] = 32'h00000013; // addi x0, x0, 0 | PC 684
+cpu_top_dut.instruction_memory_unit.memory[172] = 32'h00000013; // addi x0, x0, 0 | PC 688
+
+// PASS: PC 896, pc[9:7] = 111
+cpu_top_dut.instruction_memory_unit.memory[224] = 32'h0000006F; // jal x0, PASS | PC 896
+cpu_top_dut.instruction_memory_unit.memory[225] = 32'h00000013; // addi x0, x0, 0 | PC 900
+cpu_top_dut.instruction_memory_unit.memory[226] = 32'h00000013; // addi x0, x0, 0 | PC 904

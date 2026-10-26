@@ -1,0 +1,24 @@
+# Ignore everything directly inside the project folder.
+/*
+
+# Keep this configuration.
+!/.gitignore
+
+# Verilog source and testbenches.
+!/*.v
+
+
+# Test programs and simulation scripts.
+!/*.mem
+!/*.asm
+!/*.do
+!/*_verilog.txt
+
+
+# Project logs.
+!/DEBUG_LOG.md
+!/TEST_LOG.md
+
+# Future project documentation.
+!/README.md
+!/LICENSE

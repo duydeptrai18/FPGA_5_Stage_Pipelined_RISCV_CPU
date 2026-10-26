@@ -1,0 +1,275 @@
+//Forwarding and stall and flush test cases.
+//Put this inside cpu_top_tb
+# FAIL: PC 512, pc[9:7] = 100
+# PASS: PC 896, pc[9:7] = 111
+
+// Test 0: Immediate dependency on rs1.
+cpu_top_dut.instruction_memory_unit.memory[0] = 32'h00000513; // addi x10, x0, 0
+cpu_top_dut.instruction_memory_unit.memory[1] = 32'h00400093; // addi x1, x0, 4
+cpu_top_dut.instruction_memory_unit.memory[2] = 32'h00400113; // addi x2, x0, 4
+cpu_top_dut.instruction_memory_unit.memory[3] = 32'h001101B3; // add x3, x2, x1 -> 8
+cpu_top_dut.instruction_memory_unit.memory[4] = 32'h00800213; // addi x4, x0, 8
+cpu_top_dut.instruction_memory_unit.memory[5] = 32'h1E419663; // bne x3, x4, FAIL
+
+// Test 1: Immediate dependency on rs2.
+cpu_top_dut.instruction_memory_unit.memory[6] = 32'h00100513; // addi x10, x0, 1
+cpu_top_dut.instruction_memory_unit.memory[7] = 32'h00400093; // addi x1, x0, 4
+cpu_top_dut.instruction_memory_unit.memory[8] = 32'h00500113; // addi x2, x0, 5
+cpu_top_dut.instruction_memory_unit.memory[9] = 32'h002081B3; // add x3, x1, x2 -> 9
+cpu_top_dut.instruction_memory_unit.memory[10] = 32'h00900213; // addi x4, x0, 9
+cpu_top_dut.instruction_memory_unit.memory[11] = 32'h1C419A63; // bne x3, x4, FAIL
+
+// Test 2: Both operands need the same new value.
+cpu_top_dut.instruction_memory_unit.memory[12] = 32'h00200513; // addi x10, x0, 2
+cpu_top_dut.instruction_memory_unit.memory[13] = 32'h00400093; // addi x1, x0, 4
+cpu_top_dut.instruction_memory_unit.memory[14] = 32'h00600113; // addi x2, x0, 6
+cpu_top_dut.instruction_memory_unit.memory[15] = 32'h002101B3; // add x3, x2, x2 -> 12
+cpu_top_dut.instruction_memory_unit.memory[16] = 32'h00C00213; // addi x4, x0, 12
+cpu_top_dut.instruction_memory_unit.memory[17] = 32'h1A419E63; // bne x3, x4, FAIL
+
+// Test 3: Operands from different producers.
+cpu_top_dut.instruction_memory_unit.memory[18] = 32'h00300513; // addi x10, x0, 3
+cpu_top_dut.instruction_memory_unit.memory[19] = 32'h00700093; // addi x1, x0, 7
+cpu_top_dut.instruction_memory_unit.memory[20] = 32'h00800113; // addi x2, x0, 8
+cpu_top_dut.instruction_memory_unit.memory[21] = 32'h002081B3; // add x3, x1, x2 -> 15
+cpu_top_dut.instruction_memory_unit.memory[22] = 32'h00F00213; // addi x4, x0, 15
+cpu_top_dut.instruction_memory_unit.memory[23] = 32'h1A419263; // bne x3, x4, FAIL
+
+// Test 4: One unrelated instruction between producer and consumer.
+cpu_top_dut.instruction_memory_unit.memory[24] = 32'h00400513; // addi x10, x0, 4
+cpu_top_dut.instruction_memory_unit.memory[25] = 32'h00400093; // addi x1, x0, 4
+cpu_top_dut.instruction_memory_unit.memory[26] = 32'h00900113; // addi x2, x0, 9
+cpu_top_dut.instruction_memory_unit.memory[27] = 32'h06300293; // addi x5, x0, 99
+cpu_top_dut.instruction_memory_unit.memory[28] = 32'h001101B3; // add x3, x2, x1 -> 13
+cpu_top_dut.instruction_memory_unit.memory[29] = 32'h00D00213; // addi x4, x0, 13
+cpu_top_dut.instruction_memory_unit.memory[30] = 32'h18419463; // bne x3, x4, FAIL
+
+// Test 5: Two unrelated instructions between producer and consumer.
+cpu_top_dut.instruction_memory_unit.memory[31] = 32'h00500513; // addi x10, x0, 5
+cpu_top_dut.instruction_memory_unit.memory[32] = 32'h00400093; // addi x1, x0, 4
+cpu_top_dut.instruction_memory_unit.memory[33] = 32'h00A00113; // addi x2, x0, 10
+cpu_top_dut.instruction_memory_unit.memory[34] = 32'h01500293; // addi x5, x0, 21
+cpu_top_dut.instruction_memory_unit.memory[35] = 32'h01600313; // addi x6, x0, 22
+cpu_top_dut.instruction_memory_unit.memory[36] = 32'h001101B3; // add x3, x2, x1 -> 14
+cpu_top_dut.instruction_memory_unit.memory[37] = 32'h00E00213; // addi x4, x0, 14
+cpu_top_dut.instruction_memory_unit.memory[38] = 32'h16419463; // bne x3, x4, FAIL
+
+// Test 6: Newest write to the same register wins.
+cpu_top_dut.instruction_memory_unit.memory[39] = 32'h00600513; // addi x10, x0, 6
+cpu_top_dut.instruction_memory_unit.memory[40] = 32'h00400093; // addi x1, x0, 4
+cpu_top_dut.instruction_memory_unit.memory[41] = 32'h00B00113; // addi x2, x0, 11
+cpu_top_dut.instruction_memory_unit.memory[42] = 32'h00C00113; // addi x2, x0, 12
+cpu_top_dut.instruction_memory_unit.memory[43] = 32'h001101B3; // add x3, x2, x1 -> 16
+cpu_top_dut.instruction_memory_unit.memory[44] = 32'h01000213; // addi x4, x0, 16
+cpu_top_dut.instruction_memory_unit.memory[45] = 32'h14419663; // bne x3, x4, FAIL
+
+// Test 7: Chain of dependent updates.
+cpu_top_dut.instruction_memory_unit.memory[46] = 32'h00700513; // addi x10, x0, 7
+cpu_top_dut.instruction_memory_unit.memory[47] = 32'h00400193; // addi x3, x0, 4
+cpu_top_dut.instruction_memory_unit.memory[48] = 32'h00118193; // addi x3, x3, 1 -> 5
+cpu_top_dut.instruction_memory_unit.memory[49] = 32'h00218193; // addi x3, x3, 2 -> 7
+cpu_top_dut.instruction_memory_unit.memory[50] = 32'h00700213; // addi x4, x0, 7
+cpu_top_dut.instruction_memory_unit.memory[51] = 32'h12419A63; // bne x3, x4, FAIL
+
+// Test 8a + 8b: Store-address and load-address forwarding.
+cpu_top_dut.instruction_memory_unit.memory[52] = 32'h00800513; // addi x10, x0, 8
+cpu_top_dut.instruction_memory_unit.memory[53] = 32'h00400093; // addi x1, x0, 4
+cpu_top_dut.instruction_memory_unit.memory[54] = 32'h00400213; // addi x4, x0, 4
+cpu_top_dut.instruction_memory_unit.memory[55] = 32'h00000113; // addi x2, x0, 0
+cpu_top_dut.instruction_memory_unit.memory[56] = 32'h00112023; // sw x1, 0(x2)
+cpu_top_dut.instruction_memory_unit.memory[57] = 32'h00000113; // addi x2, x0, 0
+cpu_top_dut.instruction_memory_unit.memory[58] = 32'h00012183; // lw x3, 0(x2) -> 4
+cpu_top_dut.instruction_memory_unit.memory[59] = 32'h10419A63; // bne x3, x4, FAIL
+
+// Test 9: Store-data forwarding only.
+cpu_top_dut.instruction_memory_unit.memory[60] = 32'h00900513; // addi x10, x0, 9
+cpu_top_dut.instruction_memory_unit.memory[61] = 32'h00000113; // addi x2, x0, 0
+cpu_top_dut.instruction_memory_unit.memory[62] = 32'h02A00093; // addi x1, x0, 42
+cpu_top_dut.instruction_memory_unit.memory[63] = 32'h00102023; // sw x1, 0(x0)
+cpu_top_dut.instruction_memory_unit.memory[64] = 32'h00002183; // lw x3, 0(x0) -> 42
+cpu_top_dut.instruction_memory_unit.memory[65] = 32'h02A00213; // addi x4, x0, 42
+cpu_top_dut.instruction_memory_unit.memory[66] = 32'h0E419C63; // bne x3, x4, FAIL
+
+// Test 10: Forward both store address and store data.
+cpu_top_dut.instruction_memory_unit.memory[67] = 32'h00A00513; // addi x10, x0, 10
+cpu_top_dut.instruction_memory_unit.memory[68] = 32'h00000113; // addi x2, x0, 0
+cpu_top_dut.instruction_memory_unit.memory[69] = 32'h03700093; // addi x1, x0, 55
+cpu_top_dut.instruction_memory_unit.memory[70] = 32'h00112023; // sw x1, 0(x2)
+cpu_top_dut.instruction_memory_unit.memory[71] = 32'h00002183; // lw x3, 0(x0) -> 55
+cpu_top_dut.instruction_memory_unit.memory[72] = 32'h03700213; // addi x4, x0, 55
+cpu_top_dut.instruction_memory_unit.memory[73] = 32'h0C419E63; // bne x3, x4, FAIL
+
+// Test 11a: Forward BNE operand 1; branch must NOT be taken.
+cpu_top_dut.instruction_memory_unit.memory[74] = 32'h00B00513; // addi x10, x0, 11
+cpu_top_dut.instruction_memory_unit.memory[75] = 32'h00500093; // addi x1, x0, 5
+cpu_top_dut.instruction_memory_unit.memory[76] = 32'h00000013; // NOP
+cpu_top_dut.instruction_memory_unit.memory[77] = 32'h00000013; // NOP
+cpu_top_dut.instruction_memory_unit.memory[78] = 32'h00500113; // addi x2, x0, 5
+cpu_top_dut.instruction_memory_unit.memory[79] = 32'h0C111263; // bne x2, x1, FAIL
+
+// Test 11b: Forward BLT operand 2; branch must NOT be taken.
+cpu_top_dut.instruction_memory_unit.memory[80] = 32'h00C00513; // addi x10, x0, 12
+cpu_top_dut.instruction_memory_unit.memory[81] = 32'h00500093; // addi x1, x0, 5
+cpu_top_dut.instruction_memory_unit.memory[82] = 32'h00000013; // NOP
+cpu_top_dut.instruction_memory_unit.memory[83] = 32'h00000013; // NOP
+cpu_top_dut.instruction_memory_unit.memory[84] = 32'h00500113; // addi x2, x0, 5
+cpu_top_dut.instruction_memory_unit.memory[85] = 32'h0A20C663; // blt x1, x2, FAIL
+
+
+// Test 12: Forward results from LUI and AUIPC.
+cpu_top_dut.instruction_memory_unit.memory[86] = 32'h00C00513; // addi x10, x0, 12
+cpu_top_dut.instruction_memory_unit.memory[87] = 32'h000040B7; // lui x1, 4 -> 16384
+cpu_top_dut.instruction_memory_unit.memory[88] = 32'h00008193; // addi x3, x1, 0 -> 16384
+cpu_top_dut.instruction_memory_unit.memory[89] = 32'h00000117; // auipc x2, 0 -> 356
+cpu_top_dut.instruction_memory_unit.memory[90] = 32'h00010213; // addi x4, x2, 0 -> 356
+cpu_top_dut.instruction_memory_unit.memory[91] = 32'h00100293; // addi x5, x0, 1
+cpu_top_dut.instruction_memory_unit.memory[92] = 32'h00E29293; // slli x5, x5, 14 -> 16384
+cpu_top_dut.instruction_memory_unit.memory[93] = 32'h16400313; // addi x6, x0, 356
+cpu_top_dut.instruction_memory_unit.memory[94] = 32'h08519463; // bne x3, x5, FAIL
+cpu_top_dut.instruction_memory_unit.memory[95] = 32'h08621263; // bne x4, x6, FAIL
+
+// Test 13: Load-use dependency in ADD.
+cpu_top_dut.instruction_memory_unit.memory[96] = 32'h00D00513; // addi x10, x0, 13
+cpu_top_dut.instruction_memory_unit.memory[97] = 32'h00400113; // addi x2, x0, 4
+cpu_top_dut.instruction_memory_unit.memory[98] = 32'h00002083; // lw x1, 0(x0) -> 55
+cpu_top_dut.instruction_memory_unit.memory[99] = 32'h002081B3; // add x3, x1, x2 -> 59
+cpu_top_dut.instruction_memory_unit.memory[100] = 32'h03B00213; // addi x4, x0, 59
+cpu_top_dut.instruction_memory_unit.memory[101] = 32'h06419663; // bne x3, x4, FAIL
+
+// Test 14: Load-use dependency in store data.
+cpu_top_dut.instruction_memory_unit.memory[102] = 32'h00E00513; // addi x10, x0, 14
+cpu_top_dut.instruction_memory_unit.memory[103] = 32'h00002083; // lw x1, 0(x0) -> 55
+cpu_top_dut.instruction_memory_unit.memory[104] = 32'h00102223; // sw x1, 4(x0)
+cpu_top_dut.instruction_memory_unit.memory[105] = 32'h00402183; // lw x3, 4(x0) -> 55
+cpu_top_dut.instruction_memory_unit.memory[106] = 32'h03700213; // addi x4, x0, 55
+cpu_top_dut.instruction_memory_unit.memory[107] = 32'h04419A63; // bne x3, x4, FAIL
+
+// Test 15: Writes to x0 must be ignored.
+cpu_top_dut.instruction_memory_unit.memory[108] = 32'h00F00513; // addi x10, x0, 15
+cpu_top_dut.instruction_memory_unit.memory[109] = 32'h00400113; // addi x2, x0, 4
+cpu_top_dut.instruction_memory_unit.memory[110] = 32'h00700013; // addi x0, x0, 7 -> x0 remains 0
+cpu_top_dut.instruction_memory_unit.memory[111] = 32'h002001B3; // add x3, x0, x2 -> 4
+cpu_top_dut.instruction_memory_unit.memory[112] = 32'h00400213; // addi x4, x0, 4
+cpu_top_dut.instruction_memory_unit.memory[113] = 32'h02419E63; // bne x3, x4, FAIL
+
+// Continue to test 16. Because Fail path is in memory[128]
+cpu_top_dut.instruction_memory_unit.memory[114] = 32'h0480006F; // jal x0, TEST16 -> memory[132]
+cpu_top_dut.instruction_memory_unit.memory[115] = 32'h00000013; // NOP
+cpu_top_dut.instruction_memory_unit.memory[116] = 32'h00000013; // NOP
+
+
+// Test 16: Taken branch must flush both following instructions.
+// Initialize x12 and x13 to 0; they must remain 0.
+cpu_top_dut.instruction_memory_unit.memory[132] = 32'h01000513; // addi x10, x0, 16
+cpu_top_dut.instruction_memory_unit.memory[133] = 32'h00000613; // addi x12, x0, 0
+cpu_top_dut.instruction_memory_unit.memory[134] = 32'h00000693; // addi x13, x0, 0
+cpu_top_dut.instruction_memory_unit.memory[135] = 32'h00000213; // addi x4, x0, 0 -> expected
+cpu_top_dut.instruction_memory_unit.memory[136] = 32'h00500093; // addi x1, x0, 5
+cpu_top_dut.instruction_memory_unit.memory[137] = 32'h00500113; // addi x2, x0, 5
+cpu_top_dut.instruction_memory_unit.memory[138] = 32'h00208663; // beq x1, x2, +12 -> memory[141]
+
+// Wrong path: both must be flushed.
+cpu_top_dut.instruction_memory_unit.memory[139] = 32'h00500613; // addi x12, x0, 5
+cpu_top_dut.instruction_memory_unit.memory[140] = 32'h00600693; // addi x13, x0, 6
+
+// Branch target: check both registers remained unchanged.
+cpu_top_dut.instruction_memory_unit.memory[141] = 32'hFC4616E3; // bne x12, x4, FAIL
+cpu_top_dut.instruction_memory_unit.memory[142] = 32'hFC4694E3; // bne x13, x4, FAIL
+
+
+// Test 17: Forward JALR base address, flush wrong-path instructions,
+// and check the return address.
+cpu_top_dut.instruction_memory_unit.memory[143] = 32'h01100513; // addi x10, x0, 17
+cpu_top_dut.instruction_memory_unit.memory[144] = 32'h00000813; // addi x16, x0, 0
+cpu_top_dut.instruction_memory_unit.memory[145] = 32'h00000893; // addi x17, x0, 0
+cpu_top_dut.instruction_memory_unit.memory[146] = 32'h00000213; // addi x4, x0, 0 -> expected
+cpu_top_dut.instruction_memory_unit.memory[147] = 32'h25C00713; // addi x14, x0, 604
+cpu_top_dut.instruction_memory_unit.memory[148] = 32'h000707E7; // jalr x15, 0(x14) -> memory[151]; x15 = 596
+
+// Wrong path: both must be flushed.
+cpu_top_dut.instruction_memory_unit.memory[149] = 32'h00100813; // addi x16, x0, 1
+cpu_top_dut.instruction_memory_unit.memory[150] = 32'h00200893; // addi x17, x0, 2
+
+// Test 17 continued: Check unchanged registers and JALR return address.
+cpu_top_dut.instruction_memory_unit.memory[151] = 32'h25400293; // addi x5, x0, 596 -> expected return address
+cpu_top_dut.instruction_memory_unit.memory[152] = 32'hFA4810E3; // bne x16, x4, FAIL
+cpu_top_dut.instruction_memory_unit.memory[153] = 32'hF8489EE3; // bne x17, x4, FAIL
+cpu_top_dut.instruction_memory_unit.memory[154] = 32'hF8579CE3; // bne x15, x5, FAIL
+
+
+// Test 18: JAL flush and return address.
+cpu_top_dut.instruction_memory_unit.memory[155] = 32'h01200513; // addi x10, x0, 18
+cpu_top_dut.instruction_memory_unit.memory[156] = 32'h00000A13; // addi x20, x0, 0
+cpu_top_dut.instruction_memory_unit.memory[157] = 32'h00000A93; // addi x21, x0, 0
+cpu_top_dut.instruction_memory_unit.memory[158] = 32'h00000213; // addi x4, x0, 0 -> expected
+cpu_top_dut.instruction_memory_unit.memory[159] = 32'h00C009EF; // jal x19, +12 -> memory[162]; x19 = 640
+
+// Wrong path: both must be flushed.
+cpu_top_dut.instruction_memory_unit.memory[160] = 32'h00100A13; // addi x20, x0, 1
+cpu_top_dut.instruction_memory_unit.memory[161] = 32'h00200A93; // addi x21, x0, 2
+
+// Jump target: check unchanged registers and return address.
+cpu_top_dut.instruction_memory_unit.memory[162] = 32'h28000293; // addi x5, x0, 640 -> expected return address
+cpu_top_dut.instruction_memory_unit.memory[163] = 32'hF64A1AE3; // bne x20, x4, FAIL
+cpu_top_dut.instruction_memory_unit.memory[164] = 32'hF64A98E3; // bne x21, x4, FAIL
+cpu_top_dut.instruction_memory_unit.memory[165] = 32'hF65996E3; // bne x19, x5, FAIL
+
+// Test 19: Load-use dependency in branch operands.
+// Compare the just-loaded value with the expected value.
+cpu_top_dut.instruction_memory_unit.memory[166] = 32'h01300513; // addi x10, x0, 19
+cpu_top_dut.instruction_memory_unit.memory[167] = 32'h03700213; // addi x4, x0, 55 -> expected
+cpu_top_dut.instruction_memory_unit.memory[168] = 32'h00002183; // lw x3, 0(x0) -> 55
+cpu_top_dut.instruction_memory_unit.memory[169] = 32'hF4419EE3; // bne x3, x4, FAIL
+
+
+// Test 20: Load-use dependency in the next load's base address.
+// First load: data memory[0] -> x1 = 55.
+// Second load: address 55 - 51 = 4 -> data memory[1] -> x3 = 55.
+cpu_top_dut.instruction_memory_unit.memory[170] = 32'h01400513; // addi x10, x0, 20
+cpu_top_dut.instruction_memory_unit.memory[171] = 32'h03700213; // addi x4, x0, 55 -> expected
+cpu_top_dut.instruction_memory_unit.memory[172] = 32'h00002083; // lw x1, 0(x0) -> 55
+cpu_top_dut.instruction_memory_unit.memory[173] = 32'hFCD0A183; // lw x3, -51(x1) -> 55
+cpu_top_dut.instruction_memory_unit.memory[174] = 32'hF44194E3; // bne x3, x4, FAIL
+
+
+// Test 21: Load-use dependency in JALR's base register.
+// Load immediately before JALR to exercise the dependency.
+// Target = (55 + 665) & ~1 = 720 -> memory[180].
+cpu_top_dut.instruction_memory_unit.memory[175] = 32'h01500513; // addi x10, x0, 21
+cpu_top_dut.instruction_memory_unit.memory[176] = 32'h00002083; // lw x1, 0(x0) -> 55
+cpu_top_dut.instruction_memory_unit.memory[177] = 32'h29908067; // jalr x0, 665(x1) -> memory[180]
+
+// Test 22: Two harmless instructions after JALR.
+// Flush correctness was checked in the earlier tests.
+cpu_top_dut.instruction_memory_unit.memory[178] = 32'h00000013; // NOP
+cpu_top_dut.instruction_memory_unit.memory[179] = 32'h00000013; // NOP
+
+
+// Test 23: Branch immediate bits must not create false forwarding.
+// BLT's bits [11:7] resemble rd = x8, but BLT writes no register.
+// The following ADD must read the existing x8 = 352.
+cpu_top_dut.instruction_memory_unit.memory[180] = 32'h01700513; // addi x10, x0, 23
+cpu_top_dut.instruction_memory_unit.memory[181] = 32'h16000413; // addi x8, x0, 352
+cpu_top_dut.instruction_memory_unit.memory[182] = 32'h00800093; // addi x1, x0, 8
+cpu_top_dut.instruction_memory_unit.memory[183] = 32'h00400113; // addi x2, x0, 4
+cpu_top_dut.instruction_memory_unit.memory[184] = 32'h0020C463; // blt x1, x2, +8 -> NOT taken
+cpu_top_dut.instruction_memory_unit.memory[185] = 32'h008001B3; // add x3, x0, x8 -> 352
+cpu_top_dut.instruction_memory_unit.memory[186] = 32'h16000213; // addi x4, x0, 352 -> expected
+cpu_top_dut.instruction_memory_unit.memory[187] = 32'hF0419AE3; // bne x3, x4, FAIL
+
+
+// All tests passed.
+cpu_top_dut.instruction_memory_unit.memory[188] = 32'h0900006F; // jal x0, PASS -> memory[224]
+cpu_top_dut.instruction_memory_unit.memory[189] = 32'h00000013; // NOP
+cpu_top_dut.instruction_memory_unit.memory[190] = 32'h00000013; // NOP
+
+
+// FAIL: PC = 512, pc[9:7] = 100.
+cpu_top_dut.instruction_memory_unit.memory[128] = 32'h0000006F; // jal x0, 0
+cpu_top_dut.instruction_memory_unit.memory[129] = 32'h00000013; // NOP
+cpu_top_dut.instruction_memory_unit.memory[130] = 32'h00000013; // NOP
+
+// PASS: PC = 896, pc[9:7] = 111.
+cpu_top_dut.instruction_memory_unit.memory[224] = 32'h0000006F; // jal x0, 0
+cpu_top_dut.instruction_memory_unit.memory[225] = 32'h00000013; // NOP
+cpu_top_dut.instruction_memory_unit.memory[226] = 32'h00000013; // NOP
