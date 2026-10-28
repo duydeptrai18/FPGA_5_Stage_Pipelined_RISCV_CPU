@@ -5,25 +5,29 @@ then the next following edge, it brings the valid flag down and bring the ready 
 module slow_memory(
 	input clock,
 	input reset_n,
-	input [31:0] address,
+	input [17:0] address,
 	input [127:0] write_data,
 	input request_valid,
-	input request,
+	input [1:0] request,
 
 	output reg ready,
 	output reg valid,
 	output reg [127:0] read_data
 );
-//localparam state
+//state
 localparam IDLE             = 2'b00;
 localparam READ_PROCESSING  = 2'b01;
 localparam WRITE_PROCESSING = 2'b10;
 localparam FINISH           = 2'b11;
 
+//request
+localparam READ = 2'b01;
+localparam WRITE = 2'b10;
+
 localparam PROCESSING_CYCLES = 3'd5;
 
 //use these temp so input can change
-reg [31:0] temp_address;
+reg [17:0] temp_address;
 reg [127:0] temp_write_data;
 
 reg [2:0] counter;
@@ -37,7 +41,7 @@ always @(posedge clock or negedge reset_n) begin
 		ready <= 1'b1;
 		valid <= 1'b0;
 		read_data <= 128'd0;		
-		temp_address <=32'd0;
+		temp_address <=18'd0;
 		temp_write_data <=128'd0;
 
 	end
@@ -49,14 +53,14 @@ always @(posedge clock or negedge reset_n) begin
 			counter<=3'd0;
 			if(request_valid && ready) begin
 				temp_address<=address;
-				if(!request) begin //read
+				if(request == READ) begin //read
 					state<=READ_PROCESSING;
 					ready<=1'b0;				
 				
 				
 				end
 	
-				else if(request) begin
+				else if(request == WRITE) begin
 					temp_write_data<=write_data;
 					state<=WRITE_PROCESSING;
 					ready<=1'b0;
@@ -104,4 +108,4 @@ always @(posedge clock or negedge reset_n) begin
 
 	
 end
-endmodule
+endmodule/. saved
