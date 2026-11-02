@@ -38,7 +38,9 @@ module i_cache (
 
 	//to cpu
 	output [31:0] next_instruction,//returned next_instruction to cpu
-	output reg i_cache_stall //stall flag for the cpu to stall while the cache is retrieving the data, this will stay on as long as the data is not available yet.
+	output reg i_cache_stall, //stall flag for the cpu to stall while the cache is retrieving the data, this will stay on as long as the data is not available yet.
+
+	output [1:0] debug_state
 
 );
 //4 cache slots, each slot has 4 spaces, each space stores 32-bit value.
@@ -51,9 +53,9 @@ reg [3:0] slot_tag [0:3]; //slot_tag[0] belongs to slot 0.
 
 reg cache_data_valid;//Internal valid flag that indicates the request is finished, this will be used to unstall the cache in the //always combination block that controls the stall logic.
 
-wire [3:0] tag = next_pc[9:6];
-wire [1:0] slot_index = next_pc[5:4];
-wire [1:0] data_index = next_pc[3:2];
+wire [3:0] tag = cpu_next_pc[9:6];
+wire [1:0] slot_index = cpu_next_pc[5:4];
+wire [1:0] data_index = cpu_next_pc[3:2];
 wire hit_tag = (tag == slot_tag[slot_index]); 
 wire bit_valid = slot_valid[slot_index];
 
@@ -67,6 +69,8 @@ localparam IDLE = 2'd0;//State for waiting to take load or store request from CP
 localparam START = 2'd1;//State to indicate the start of a new request
 localparam WAIT_MEMORY_READ = 2'd2;//State to wait for memory to present the requested data
 localparam FINISH = 2'd3;//State to indicate the finish of a request
+
+assign debug_state = state;
 
 localparam DEFAULT_CACHE_VALUE = 32'hFFFFFFFF;
 assign next_instruction = bit_valid ? memory[slot_index][data_index] : DEFAULT_CACHE_VALUE;
@@ -91,14 +95,20 @@ end
 
 always @(posedge clock or negedge reset_n) begin
 	if(!reset_n) begin 
-		state <= IDLING;
+		state <= IDLE;
 		cache_data_valid <= 1'b0;
 		slot_valid <= 4'b0000;
-		
+		slot_tag[0] <= 4'b0000;
+		slot_tag[1] <= 4'b0000;
+		slot_tag[2] <= 4'b0000;
+		slot_tag[3] <= 4'b0000;
+		memory_request_valid <= 1'b0; 
+		memory_request <= REQUEST_NOTHING;
+	 	memory_next_pc <= 10'd0;		
 	end
 
 	else begin
-		case(state): 
+		case(state) 
 
 		IDLE: begin
 			//when slot is valid and tag hits, do nothing
@@ -127,9 +137,9 @@ always @(posedge clock or negedge reset_n) begin
 		end
 
 		START: begin
-			request_valid <= 1'b0;	
+			memory_request_valid <= 1'b0;	
 			if(memory_request == READ) state<= WAIT_MEMORY_READ;
-			else state <= IDLING;
+			else state <= IDLE;
 
 		end
 		
@@ -141,6 +151,7 @@ always @(posedge clock or negedge reset_n) begin
 				memory[slot_index][1] <= memory_data[63:32];
 				memory[slot_index][2] <= memory_data[95:64];
 				memory[slot_index][3] <= memory_data[127:96];
+				slot_tag[slot_index] <= tag;
 				slot_valid[slot_index] <= 1'b1;
 				state <= FINISH;
 				cache_data_valid <= 1'b1;
@@ -164,3 +175,5 @@ always @(posedge clock or negedge reset_n) begin
 	end
 
 end
+
+endmodule

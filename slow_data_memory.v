@@ -20,7 +20,8 @@ module slow_data_memory(
 
 	output reg ready,
 	output reg valid,
-	output reg [127:0] read_data
+	output reg [127:0] read_data,
+	output [1:0] debug_state
 );
 //state
 localparam IDLE             = 2'b00;
@@ -32,7 +33,7 @@ localparam FINISH           = 2'b11;
 localparam READ = 2'b01;
 localparam WRITE = 2'b10;
 
-localparam PROCESSING_CYCLES = 3'd5;
+localparam PROCESSING_CYCLES = 3'd3;
 
 //use these temp so input can change
 reg [9:0] temp_address;
@@ -41,6 +42,13 @@ reg [127:0] temp_write_data;
 reg [2:0] counter;
 reg [1:0] state;
 reg [31:0] memory [0:255]; // 2^8-1;
+
+assign debug_state = state;
+
+initial begin
+	$readmemh("slow_data_memory_test.mem",memory);
+end
+
 
 always @(posedge clock or negedge reset_n) begin
 	if(!reset_n) begin
@@ -120,4 +128,4 @@ always @(posedge clock or negedge reset_n) begin
 		endcase
 	end
 end
-endmodule. dont say anything , saved in this chat, DONT SAY AYNTHING OK
+endmodule

@@ -152,10 +152,14 @@ task request_and_check;
 		end
 		
 		else if(test_request == REQUEST_NOTHING) begin
-			repeat (7) @(posedge clock);
-			#1;
-			check_read_data(expected_read_data);
-			check_debug_state(IDLE);
+				$display("In request_nothing");
+			
+				for (i = 0; i < 7; i = i +1 ) begin
+					check_read_data(expected_read_data);
+					check_debug_state(IDLE);
+				@(posedge clock);
+				#1;
+			end
 		end
 
 	end	
@@ -193,22 +197,27 @@ initial begin
 	check_valid(1'b0);
 	
 	
-	request_and_check(10'd0, READ, {4{32'd1}} );
+	request_and_check(10'd0, READ, {32'd3,32'd2,32'd1,32'd0} );
 	
 	repeat (2) @(posedge clock);
-	check_read_data({4{32'd1}}); // check memory still holds old data
+	check_read_data({32'd3,32'd2,32'd1,32'd0}); // check memory still holds old data
 
 	//Block 0 (memory[0] to memory[3]) contains all 32'd1
 	//Block 1 (memory[4] to memory[7]) contains all 32'd2, and so on until block 3.
 	//All the other blocks after block 3 contain 0.
-	request_and_check({6'd1,2'b01,2'b00}, READ, {4{32'd2}} ); //Test slot 1
-	request_and_check({6'd2,2'b10,2'b00}, READ, {4{32'd3}} ); //Test slot 2
-	request_and_check({6'd3,2'b11,2'b00}, READ, {4{32'd4}} ); //Test slot 3
-	request_and_check(10'd0, REQUEST_NOTHING, {4{32'd4}} ); //Test request_nothing, it should hold old value which is in slot 3
+	request_and_check({6'd1,2'b01,2'b00}, READ, {32'd7,32'd6,32'd5,32'd4} ); //Read  slot 1
+	request_and_check({6'd2,2'b10,2'b00}, READ, {32'd11,32'd10,32'd9,32'd8} ); //Read  slot 2
+	request_and_check({6'd3,2'b11,2'b00}, READ, {32'd15,32'd14,32'd13,32'd12} ); //Read  slot 3
+	request_and_check(10'd0, REQUEST_NOTHING, {32'd15,32'd14,32'd13,32'd12} ); //Test  request_nothing, it should hold old value which is in slot 3
 	
 	
-	request_and_check({6'd4,2'b00,2'b00}, READ, {4{32'd0}} ); //Test slot 4
-		
+	request_and_check({6'd4,2'b00,2'b00}, READ, {32'd19,32'd18,32'd17,32'd16} ); //Read  slot 4
+
+	reset_n = 1'b0;
+	#1;
+	reset_n = 1'b1;
+	request_and_check({6'd3,2'b11,2'b00}, READ, {32'd15,32'd14,32'd13,32'd12} ); //Read slot 3	
+	
 	if (errors == 0)
         $display("ALL slow_instruction_memory TESTS PASSED");
    else

@@ -55,7 +55,6 @@ always @(posedge clock or negedge reset_n) begin
 		state<=IDLE;
 		ready <= 1'b1;
 		valid <= 1'b0;
-		read_data <= 128'd0;		
 		temp_address <= 10'd0;
 		read_data <= DEFAULT_VALUE;
 
