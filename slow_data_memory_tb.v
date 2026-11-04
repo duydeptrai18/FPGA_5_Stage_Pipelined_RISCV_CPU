@@ -236,18 +236,18 @@ initial begin
 	
 	//([9:0] test_address, [1:0] test_request,[127:0] test_write_data, [127:0] expected_read_data  )
 	//check read then check memory still holds data
-	request_and_check(10'd0, READ, DEFAULT_VALUE ,{4{32'd1}} );
+	request_and_check(10'd0, READ, DEFAULT_VALUE ,{32'd3,32'd2,32'd1,32'd0} );
 	
 	repeat (2) @(posedge clock);
-	check_read_data({4{32'd1}}); // check memory still holds old data
+	check_read_data({32'd3,32'd2,32'd1,32'd0}); // check memory still holds old data
 
 	//Block 0 (memory[0] to memory[3]) contains all 32'd1
 	//Block 1 (memory[4] to memory[7]) contains all 32'd2, and so on until block 3.
 	//All the other blocks after block 3 contain 0.
-	request_and_check({6'd1,2'b01,2'b00}, READ, DEFAULT_VALUE, {4{32'd2}} ); //Read slot 1
-	request_and_check({6'd2,2'b10,2'b00}, READ, DEFAULT_VALUE,{4{32'd3}} ); //Read slot 2
-	request_and_check({6'd3,2'b11,2'b00}, READ, DEFAULT_VALUE,{4{32'd4}} ); //Read slot 3
-	request_and_check(10'd0, REQUEST_NOTHING, DEFAULT_VALUE,{4{32'd4}} ); //Test request_nothing, it should hold old value which is in slot 3
+	request_and_check({6'd1,2'b01,2'b00}, READ, DEFAULT_VALUE, {32'd7,32'd6,32'd5,32'd4} ); //Read slot 1
+	request_and_check({6'd2,2'b10,2'b00}, READ, DEFAULT_VALUE,{32'd11,32'd10,32'd9,32'd8} ); //Read slot 2
+	request_and_check({6'd3,2'b11,2'b00}, READ, DEFAULT_VALUE,{32'd15,32'd14,32'd13,32'd12} ); //Read slot 3
+	request_and_check(10'd0, REQUEST_NOTHING, DEFAULT_VALUE,{32'd15,32'd14,32'd13,32'd12} ); //Test request_nothing, it should hold old value which is in slot 3
 	
 	
 	request_and_check({6'd4,2'b00,2'b00}, WRITE, {32'd44, 32'd33, 32'd22, 32'd11},{32'd44, 32'd33, 32'd22, 32'd11} ); //Write to slot 4
