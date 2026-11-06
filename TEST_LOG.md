@@ -12,3 +12,4 @@
 
 ## Nov3
 -In load or store operation where writing back first is needed,forgot to give memory address that the cpu is requesting, instead kept the writing old address which is wrong.
+- d_cache alone , all passed

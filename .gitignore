@@ -6,7 +6,7 @@
 
 # Verilog source and testbenches.
 !/*.v
-
+!/*.vh
 
 # Test programs and simulation scripts.
 !/*.mem

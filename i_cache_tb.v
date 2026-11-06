@@ -11,6 +11,7 @@ module i_cache_tb;
 reg clock;
 reg reset_n;
 
+reg cpu_request;
 reg [31:0] cpu_next_pc;
 
 reg [127:0] memory_data;
@@ -31,6 +32,7 @@ integer test_number;
 i_cache i_cache_dut (
     .clock(clock),
     .reset_n(reset_n),
+	 .cpu_request(cpu_request),
     .cpu_next_pc(cpu_next_pc),
     .memory_data(memory_data),
     .memory_ready(memory_ready),
@@ -113,6 +115,19 @@ task check_memory_request;
     end
 endtask
 
+task check_i_cache_ready;
+    input expected_i_cache_ready;
+    begin
+        if (i_cache_dut.i_cache_ready !== expected_i_cache_ready) begin
+            errors = errors + 1;
+            $display("FAIL i_cache_ready=%b expected=%b",
+                     i_cache_dut.i_cache_ready, expected_i_cache_ready);
+        end
+        else
+            $display("PASS i_cache_ready=%b", i_cache_dut.i_cache_ready);
+    end
+endtask
+
 task check_memory_next_pc;
     input [9:0] expected_memory_next_pc;
 
@@ -156,7 +171,7 @@ task check_i_cache_stall;
 endtask
 
 task request_and_check;
-
+	input test_cpu_request;
 	input [31:0] test_cpu_next_pc;
 	input [31:0] expected_before_next_instruction;
 	input [31:0] expected_after_next_instruction;
@@ -169,9 +184,11 @@ task request_and_check;
 	
 	$display("Setting up the request in IDLE state");
 	@(negedge clock);
+	cpu_request=test_cpu_request;
 	cpu_next_pc = test_cpu_next_pc;
 	memory_ready = 1'b1;
 	#1;
+	check_i_cache_ready(1'b1);
 	check_debug_state(IDLE);
 	check_memory_request(REQUEST_NOTHING);
 	check_memory_request_valid(1'b0);
@@ -182,7 +199,9 @@ task request_and_check;
 	if(expected_i_cache_stall) begin
 		@(posedge clock);
 		#1;
+		cpu_request = 1'b0;
 		$display("Tag misses, in START state right now");
+		check_i_cache_ready(1'b0);
 		check_debug_state(START);
 		check_memory_request(READ);
 		check_memory_request_valid(1'b1);
@@ -195,6 +214,7 @@ task request_and_check;
 			@(posedge clock);
 			#1;
 			$display("Tag misses, in wait_memory state right now");
+			check_i_cache_ready(1'b0);
 			memory_ready = 1'b0;
 			check_debug_state(WAIT_MEMORY_READ);
 			check_memory_request(READ);
@@ -216,6 +236,7 @@ task request_and_check;
 		memory_data_valid = 1'b0;
 		memory_ready = 1'b1;
 		$display("Tag misses, in FINISH state right now, received data");
+		check_i_cache_ready(1'b1);
 		check_debug_state(FINISH);
 		check_memory_request(READ);
 		check_memory_request_valid(1'b0);
@@ -226,6 +247,7 @@ task request_and_check;
 		@(posedge clock);
 		#1;
 		$display("Tag misses, in IDLE state right now after going back from FINISH state");
+		check_i_cache_ready(1'b1);
 		check_debug_state(IDLE);
 		check_memory_request(REQUEST_NOTHING);
 		check_memory_request_valid(1'b0);
@@ -237,6 +259,7 @@ task request_and_check;
 
 	else if(!expected_i_cache_stall) begin
 		$display("Tag hit, in IDLE state right now");
+		check_i_cache_ready(1'b1);
 		check_debug_state(IDLE);
 		check_memory_request(REQUEST_NOTHING);
 		check_memory_request_valid(1'b0);
@@ -248,6 +271,7 @@ task request_and_check;
 			@(posedge clock);
 			#1;
 			$display("Tag hit, in IDLE state right now, checking in the loop");
+			check_i_cache_ready(1'b1);
 			check_debug_state(IDLE);
 			check_memory_request(REQUEST_NOTHING);
 			check_memory_request_valid(1'b0);
@@ -266,6 +290,7 @@ endtask
 
 initial begin
    test_number = 0;
+	cpu_request = 1'b0;
 	cpu_next_pc = 32'd0;
 	memory_data = 128'd0;
 	memory_ready = 1'b1;
@@ -280,27 +305,28 @@ initial begin
 	
 //([31:0] test_next_pc, [31:0] expected_before_next_instruction, [31:0] expected_after_next_instruction, [127:0] expected_memory_data, expected_i_cache_stall)
 //All 4 slots are invalid, now we load data into them.
- 	request_and_check({22'd0,4'd0,2'd0,2'd0, 2'b00 }, DEFAULT_CACHE_VALUE, 32'd10 ,{32'd40,32'd30,32'd20,32'd10} , 1'b1  ); 
+ 	request_and_check(1'b1,{22'd0,4'd0,2'd0,2'd0, 2'b00 }, DEFAULT_CACHE_VALUE, 32'd10 ,{32'd40,32'd30,32'd20,32'd10} , 1'b1  ); 
 //Load in slot 0 after reset
- 	request_and_check({22'd0,4'd0,2'd1,2'd1, 2'b00 }, DEFAULT_CACHE_VALUE, 32'd21 ,{32'd41,32'd31,32'd21, 32'd11} , 1'b1  ); 
+ 	request_and_check(1'b1,{22'd0,4'd0,2'd1,2'd1, 2'b00 }, DEFAULT_CACHE_VALUE, 32'd21 ,{32'd41,32'd31,32'd21, 32'd11} , 1'b1  ); 
 	//Load in slot 1 after reset 
- 	request_and_check({22'd0,4'd0,2'd2,2'd2, 2'b00 }, DEFAULT_CACHE_VALUE, 32'd32 ,{32'd42,32'd32,32'd22,32'd12} , 1'b1  ); 
+ 	request_and_check(1'b1,{22'd0,4'd0,2'd2,2'd2, 2'b00 }, DEFAULT_CACHE_VALUE, 32'd32 ,{32'd42,32'd32,32'd22,32'd12} , 1'b1  ); 
 //Load in slot 2 after reset
- 	request_and_check({22'd0,4'd0,2'd3,2'd3, 2'b00 }, DEFAULT_CACHE_VALUE, 32'd43 ,{32'd43,32'd33,32'd23,32'd13} , 1'b1  ); 
+ 	request_and_check(1'b1,{22'd0,4'd0,2'd3,2'd3, 2'b00 }, DEFAULT_CACHE_VALUE, 32'd43 ,{32'd43,32'd33,32'd23,32'd13} , 1'b1  ); 
 //Load in slot 3 after reset
 
 //Slot 3 is valid, try reading the slot at different data_index:
- 	request_and_check({22'd0,4'd0,2'd3,2'd2, 2'b00 }, 32'd33, 32'd33 ,{32'd43,32'd33,32'd23,32'd13} , 1'b0  ); 
+ 	request_and_check(1'b1,{22'd0,4'd0,2'd3,2'd2, 2'b00 }, 32'd33, 32'd33 ,{32'd43,32'd33,32'd23,32'd13} , 1'b0  ); 
 //Reading slot 3 at different data_index
- 	request_and_check({22'd0,4'd0,2'd3,2'd1, 2'b00 }, 32'd23, 32'd23,{32'd43,32'd33,32'd23,32'd13} , 1'b0  ); 
+ 	request_and_check(1'b1,{22'd0,4'd0,2'd3,2'd1, 2'b00 }, 32'd23, 32'd23,{32'd43,32'd33,32'd23,32'd13} , 1'b0  ); 
 //Reading slot 3 at different data_index
- 	request_and_check({22'd0,4'd0,2'd3,2'd0, 2'b00 }, 32'd13, 32'd13 ,{32'd43,32'd33,32'd23,32'd13} , 1'b0  ); 
+ 	request_and_check(1'b1,{22'd0,4'd0,2'd3,2'd0, 2'b00 }, 32'd13, 32'd13 ,{32'd43,32'd33,32'd23,32'd13} , 1'b0  ); 
 //Reading slot 3 at different data_index
 
 //Load in slot 0 with different tag to see if it overwrites the old slot, 32'd10 is the old data at same location.
- 	request_and_check({22'd0,4'd1,2'd0,2'd0, 2'b00 }, 32'd10, 32'd100 ,{32'd400,32'd300,32'd200,32'd100} , 1'b1  ); 
+ 	request_and_check(1'b1,{22'd0,4'd1,2'd0,2'd0, 2'b00 }, 32'd10, 32'd100 ,{32'd400,32'd300,32'd200,32'd100} , 1'b1  ); 
 
 	//Reset invalidates previously cached slots, try refill it again with the same address to confirm the tag will miss.
+	cpu_request = 1'b0;
 	cpu_next_pc = 32'd0;
 	memory_data = 128'd0;
 	memory_ready = 1'b1;
@@ -310,7 +336,9 @@ initial begin
 	#1;
 	reset_n = 1'b1;
 
-	request_and_check({22'd0,4'd0,2'd0,2'd0, 2'b00 }, DEFAULT_CACHE_VALUE, 32'd10 ,{32'd40,32'd30,32'd20,32'd10} , 1'b1  ); 
+	request_and_check(1'b1,{22'd0,4'd0,2'd0,2'd0, 2'b00 }, DEFAULT_CACHE_VALUE, 32'd10 ,{32'd40,32'd30,32'd20,32'd10} , 1'b1  );
+	request_and_check(1'b0,{22'd0,4'd0,2'd0,2'd0, 2'b00 }, 32'd10, 32'd10 ,{32'd40,32'd30,32'd20,32'd10} , 1'b0  ); 
+
 	
 	if (errors == 0)
         $display("ALL i_cache TESTS PASSED");

@@ -24,6 +24,7 @@ module i_cache (
 	input reset_n,
 	
 	//from cpu
+	input cpu_request,
 	input [31:0] cpu_next_pc, //requested next_pc from cpu
 
 	//from memory
@@ -51,7 +52,7 @@ reg [3:0] slot_valid; //slot_valid[0] belongs to slot 0.
 reg [3:0] slot_tag [0:3]; //slot_tag[0] belongs to slot 0.
 //Contains the tag or address of each slot.
 
-reg cache_data_valid;//Internal valid flag that indicates the request is finished, this will be used to unstall the cache in the //always combination block that controls the stall logic.
+reg i_cache_ready;//Internal valid flag that indicates the request is finished, this will be used to unstall the cache in the //always combination block that controls the stall logic.
 
 wire [3:0] tag = cpu_next_pc[9:6];
 wire [1:0] slot_index = cpu_next_pc[5:4];
@@ -83,20 +84,18 @@ assign next_instruction = bit_valid ? memory[slot_index][data_index] : DEFAULT_C
 always @(*) begin
 	i_cache_stall = 1'b0;
 
-	if(!reset_n) i_cache_stall = 1'b0;
+	if(!i_cache_ready) i_cache_stall = 1'b1;
 
-	else if(cache_data_valid) i_cache_stall = 1'b0;
-
-	else if(!slot_valid[slot_index]) i_cache_stall = 1'b1;
-
-	else if(!hit_tag) i_cache_stall = 1'b1;
+	else if(cpu_request && !slot_valid[slot_index]) i_cache_stall = 1'b1;
+ 
+	else if(cpu_request && !hit_tag) i_cache_stall = 1'b1;
 	
 end
 
 always @(posedge clock or negedge reset_n) begin
 	if(!reset_n) begin 
 		state <= IDLE;
-		cache_data_valid <= 1'b0;
+		i_cache_ready <= 1'b1;
 		slot_valid <= 4'b0000;
 		slot_tag[0] <= 4'b0000;
 		slot_tag[1] <= 4'b0000;
@@ -113,7 +112,7 @@ always @(posedge clock or negedge reset_n) begin
 		IDLE: begin
 			//when slot is valid and tag hits, do nothing
 			
-			if(memory_ready) begin 
+			if(cpu_request && memory_ready) begin 
 
 				if(!bit_valid) begin//if slot is invalid, read from memory the requested instruction.
 				
@@ -121,6 +120,7 @@ always @(posedge clock or negedge reset_n) begin
 				memory_request_valid <= 1'b1;
 				memory_request <= READ;
 				memory_next_pc <= cpu_next_pc[9:0]; 
+				i_cache_ready<=1'b0;
 				end
 
 				else if(bit_valid) begin //if slot is valid
@@ -129,6 +129,7 @@ always @(posedge clock or negedge reset_n) begin
 				memory_request_valid <= 1'b1;
 				memory_request <= READ;
 				memory_next_pc  <= cpu_next_pc[9:0]; 
+				i_cache_ready<=1'b0;
 				end
 				end
 
@@ -154,7 +155,7 @@ always @(posedge clock or negedge reset_n) begin
 				slot_tag[slot_index] <= tag;
 				slot_valid[slot_index] <= 1'b1;
 				state <= FINISH;
-				cache_data_valid <= 1'b1;
+				i_cache_ready <= 1'b1;
 			end
 		end
 
@@ -162,7 +163,6 @@ always @(posedge clock or negedge reset_n) begin
 
 		//reset back and go back to IDLE state	
 		state<= IDLE;
-		cache_data_valid <= 1'b0;
 		memory_request_valid <= 1'b0;
 		memory_request <= REQUEST_NOTHING;
 

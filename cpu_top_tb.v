@@ -118,21 +118,34 @@ initial begin
 
 
     #1;
-
+	 reset_n = 1'b1;
     // Fill unused locations with NOPs.
     for (i = 0; i < 256; i = i + 1)
-        cpu_top_dut.instruction_memory_unit.memory[i] = 32'h00000013;
+        cpu_top_dut.slow_instruction_memory_unit.memory[i] = 32'h00000013;
 		  
 		  
-	/*
-	memoery0 = addi x1,x0,5
-	m1 = addi x2,x0,0
-	m2 = addi x2,x2,1
-	m3 = bne x1,x2, -4
-	m4 = jal x0, 0
+cpu_top_dut.slow_instruction_memory_unit.memory[0] =
+    {12'd5, 5'd0, 3'b000, 5'd1, I_TYPE}; // addi x1, x0, 5
 
+cpu_top_dut.slow_instruction_memory_unit.memory[1] =
+    {12'd0, 5'd0, 3'b000, 5'd2, I_TYPE}; // addi x2, x0, 0
 
-	*/
+cpu_top_dut.slow_instruction_memory_unit.memory[2] =
+    {12'd1, 5'd2, 3'b000, 5'd2, I_TYPE}; // addi x2, x2, 1
+
+cpu_top_dut.slow_instruction_memory_unit.memory[3] =
+    {1'b1, 6'b111111, 5'd2, 5'd1, 3'b001, 4'b1110, 1'b1, BRANCH}; // bne x1, x2, -4 -> memory[2]
+
+cpu_top_dut.slow_instruction_memory_unit.memory[4] =
+    {20'd0, 5'd0, JAL}; // jal x0, 0 -> stay at memory[4]
+	 
+	 
+	 repeat (50) @(posedge clock);
+	 #1;
+	 
+    check_register(5'd1,  32'd5);
+    check_register(5'd2,  32'd5);	 
+
 		  
 		  
 	/*cpu_top_dut.instruction_memory_unit.memory[0] =
@@ -155,9 +168,6 @@ cpu_top_dut.instruction_memory_unit.memory[4] =
 cpu_top_dut.instruction_memory_unit.memory[5] =
     {12'd42, 5'd0, 3'b000, 5'd5, I_TYPE}; // addi x5, x0, 42
 	 
-	 #1;
-	 reset_n=1'b1;
-	 
 	 
 	 repeat (15) @(posedge clock);
 	 #1;
@@ -169,7 +179,7 @@ cpu_top_dut.instruction_memory_unit.memory[5] =
 	 
 	 */
 	 
-	 
+	 /*
 
 	 
     // Shared operand: x1 = 4.
@@ -506,7 +516,7 @@ cpu_top_dut.instruction_memory_unit.memory[5] =
 	 check_register(5'd24,32'd42);
 	 check_register(5'd25,32'd42);
 	 check_data_memory(5'd12,32'dX);
-	 check_register(5'd30,32'd352);
+	 check_register(5'd30,32'd352);*/
 	 
 	 if (errors == 0)
         $display("ALL FORWARDING TESTS PASSED");

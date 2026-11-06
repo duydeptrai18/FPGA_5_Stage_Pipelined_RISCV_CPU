@@ -63,7 +63,7 @@ d_cache d_cache_dut (
     .cpu_write_data(cpu_write_data),
     .cpu_address(cpu_address),
     .memory_data(memory_data),
-	 .memory_data_valid(memory_data_valid),
+    .memory_data_valid(memory_data_valid),
     .memory_ready(memory_ready),
     .memory_request_valid(memory_request_valid),
     .memory_request(memory_request),
@@ -122,6 +122,32 @@ task check_memory_write_data;
         end
         else
             $display("PASS memory_write_data=%h", memory_write_data);
+    end
+endtask
+
+task check_memory_ready;
+    input expected_memory_ready;
+    begin
+        if (memory_ready !== expected_memory_ready) begin
+            errors = errors + 1;
+            $display("FAIL memory_ready=%b expected=%b",
+                     memory_ready, expected_memory_ready);
+        end
+        else
+            $display("PASS memory_ready=%b", memory_ready);
+    end
+endtask
+
+task check_memory_data_valid;
+    input expected_memory_data_valid;
+    begin
+        if (memory_data_valid !== expected_memory_data_valid) begin
+            errors = errors + 1;
+            $display("FAIL memory_data_valid=%b expected=%b",
+                     memory_data_valid, expected_memory_data_valid);
+        end
+        else
+            $display("PASS memory_data_valid=%b", memory_data_valid);
     end
 endtask
 
@@ -214,18 +240,19 @@ task check_request_tag;
     end
 endtask
 
-task check_state;
-    input [2:0] expected_state;
+task check_d_cache_state;
+    input [2:0] expected_d_cache_state;
     begin
-        if (d_cache_dut.state !== expected_state) begin
+        if (d_cache_dut.state !== expected_d_cache_state) begin
             errors = errors + 1;
-            $display("FAIL state=%b expected=%b",
-                     d_cache_dut.state, expected_state);
+            $display("FAIL d_cache_state=%b expected=%b",
+                     d_cache_dut.state, expected_d_cache_state);
         end
         else
-            $display("PASS state=%b", d_cache_dut.state);
+            $display("PASS d_cache_state=%b", d_cache_dut.state);
     end
 endtask
+
 
 task check_still_after_reset;
     input expected_still_after_reset;
@@ -240,16 +267,16 @@ task check_still_after_reset;
     end
 endtask
 
-task check_cache_data_valid;
-    input expected_cache_data_valid;
+task check_cache_ready;
+    input expected_cache_ready;
     begin
-        if (d_cache_dut.cache_data_valid !== expected_cache_data_valid) begin
+        if (d_cache_dut.cache_ready !== expected_cache_ready) begin
             errors = errors + 1;
-            $display("FAIL cache_data_valid=%b expected=%b",
-                     d_cache_dut.cache_data_valid, expected_cache_data_valid);
+            $display("FAIL cache_ready=%b expected=%b",
+                     d_cache_dut.cache_ready, expected_cache_ready);
         end
         else
-            $display("PASS cache_data_valid=%b", d_cache_dut.cache_data_valid);
+            $display("PASS cache_ready=%b", d_cache_dut.cache_ready);
     end
 endtask
 
@@ -349,6 +376,8 @@ task check_write_back_index;
     end
 endtask
 
+
+
 task writeback_and_check;
 	input [9:0] expected_writeback_address;
 	input [127:0] 	expected_memory_write_data;
@@ -359,26 +388,27 @@ task writeback_and_check;
 	integer i;
 	begin
 			if(expected_request_tag == LOAD_VALID_MISS_DIRTY) begin
-			$display("i_cache In START cycle, when expected_request_tag == LOAD_VALID_MISS_DIRTY");
+			$display("d_cache In START cycle, when expected_request_tag == LOAD_VALID_MISS_DIRTY");
 			check_request_tag(LOAD_VALID_MISS_DIRTY);
 			end
 			else if(expected_request_tag == STORE_VALID_MISS_DIRTY) begin
-			$display("i_cache In START cycle, when expected_request_tag == LOAD_VALID_MISS_DIRTY");
+			$display("d_cache In START cycle, when expected_request_tag == LOAD_VALID_MISS_DIRTY");
 			check_request_tag(STORE_VALID_MISS_DIRTY);
 			end
 			else if(expected_request_tag == WRITE_AFTER_RESET) begin
-			$display("i_cache In START cycle, when expected_request_tag == WRITE_AFTER_RESET");
+			$display("d_cache In START cycle, when expected_request_tag == WRITE_AFTER_RESET");
 			check_request_tag(WRITE_AFTER_RESET);	
 			check_still_after_reset(1'b1);		
 			end
 
 
-			check_state(START);
+			check_d_cache_state(START);
 			check_memory_request_valid(1'b1);
 			check_memory_request(WRITE);
 			check_memory_address(expected_writeback_address);
 			check_memory_write_data(expected_memory_write_data);
 			check_d_cache_stall(expected_d_cache_stall);	
+			check_cache_ready(1'b0);
 
 			$display("i_cache In first WAIT_MEMORY_WRITE cycle, when expected_request_tag == LOAD_VALID_MISS_DIRTY or expected_request_tag == STORE_VALID_MISS_DIRTY");
 			
@@ -388,12 +418,13 @@ task writeback_and_check;
 				if(expected_request_tag == WRITE_AFTER_RESET) check_still_after_reset(1'b1);
 				memory_ready = 1'b0;
 				$display("i_cache In WAIT_MEMORY_WRITE state, when expected_request_tag == LOAD_VALID_MISS_DIRTY or expected_request_tag == STORE_VALID_MISS_DIRTY");
-				check_state(WAIT_MEMORY_WRITE);
+				check_d_cache_state(WAIT_MEMORY_WRITE);
 				check_memory_request_valid(1'b0);
 				check_memory_request(WRITE);
 				check_memory_address(expected_writeback_address);
 				check_memory_write_data(expected_memory_write_data);
 				check_d_cache_stall(expected_d_cache_stall);
+				check_cache_ready(1'b0);
 			end
 
 			@(posedge clock);
@@ -461,13 +492,14 @@ task request_and_check;
 
 	#1;
 	$display("i_cache In IDLE state, Setting up the request");
-	check_state(IDLE);
+	check_d_cache_state(IDLE);
 	check_memory_request_valid(1'b0);
 	check_memory_request(REQUEST_NOTHING);
 	check_memory_address(10'd0);
 	check_request_tag(DO_NOTHING);
 	check_memory_write_data({4{DEFAULT_CACHE_VALUE }});
 	check_d_cache_stall(expected_d_cache_stall);
+	check_cache_ready(1'b1);
 
 	@(posedge clock);
 	#1;
@@ -479,14 +511,15 @@ task request_and_check;
 		if(expected_request_tag == DO_NOTHING) begin
 			for (i = 0; i < MEMORY_PROCESSING_CYCLES; i = i + 1) begin
 			$display("expected_request_tag == DO_NOTHING, checking");
-			check_state(IDLE);
+			check_cache_ready(1'b1);
+			check_d_cache_state(IDLE);
 			check_memory_request_valid(1'b0);
 			check_memory_request(REQUEST_NOTHING);
 			check_memory_address(10'd0);
 			check_request_tag(DO_NOTHING);
 			check_memory_write_data({4{DEFAULT_CACHE_VALUE }});
 			check_d_cache_stall(expected_d_cache_stall);
-
+			check_expected_d_cache_data(expected_d_cache_data);
 			check_slot_tag(slot_index,tag);
 			check_expected_slot_data(slot_index,expected_slot_data);
 			check_expected_slot_valid(expected_slot_valid);
@@ -505,10 +538,11 @@ task request_and_check;
 
 		if(expected_request_tag == LOAD_INVALID || expected_request_tag == LOAD_VALID_MISS_CLEAN || expected_request_tag == STORE_INVALID || expected_request_tag == STORE_VALID_MISS_CLEAN || expected_request_tag == LOAD_VALID_MISS_DIRTY || expected_request_tag == STORE_VALID_MISS_DIRTY ) begin
 			$display("i_cache In START cycle, when expected_request_tag == LOAD_INVALID or expected_request_tag == LOAD_VALID_!MATCH_CLEAN or expected_request_tag == STORE_INVALID or expected_request_tag == STORE_VALID_!MATCH_CLEAN");
-			check_state(START);
+			check_d_cache_state(START);
 			check_memory_request_valid(1'b1);
 			check_memory_request(READ);
 			check_memory_address(test_cpu_address[9:0]);
+			check_cache_ready(1'b0);
 			if(expected_request_tag == LOAD_INVALID) check_request_tag(LOAD_INVALID);
 			else if(expected_request_tag == LOAD_VALID_MISS_CLEAN) check_request_tag(LOAD_VALID_MISS_CLEAN);
 			else if(expected_request_tag == STORE_INVALID) check_request_tag(STORE_INVALID);
@@ -523,12 +557,13 @@ task request_and_check;
 				#1;
 				memory_ready = 1'b0;
 				$display("i_cache In WAIT_MEMORY_READ state, when expected_request_tag == LOAD_INVALID or expected_request_tag == LOAD_VALID_!MATCH_CLEAN or expected_request_tag == STORE_INVALID or expected_request_tag == STORE_VALID_!MATCH_CLEAN, waiting for data");
-				check_state(WAIT_MEMORY_READ);
+				check_d_cache_state(WAIT_MEMORY_READ);
 				check_memory_request_valid(1'b0);
 				check_memory_request(READ);
 				check_memory_address(test_cpu_address[9:0]);
 				check_memory_write_data({4{DEFAULT_CACHE_VALUE }});
 				check_d_cache_stall(expected_d_cache_stall);
+				check_cache_ready(1'b0);
 			end
 
 			@(posedge clock);
@@ -542,14 +577,14 @@ task request_and_check;
 			memory_data_valid = 1'b0;
 			memory_ready = 1'b1;
 			$display("i_cache in first cycle of FINISH state, when expected_request_tag == LOAD_INVALID or expected_request_tag == LOAD_VALID_!MATCH_CLEAN or expected_request_tag == STORE_INVALID or expected_request_tag == STORE_VALID_!MATCH_CLEAN");
-			check_state(FINISH);
+			check_d_cache_state(FINISH);
 			check_memory_request_valid(1'b0);
 			check_memory_request(READ);
 			check_memory_address(test_cpu_address[9:0]);
 			check_memory_write_data({4{DEFAULT_CACHE_VALUE }});
 			check_expected_d_cache_data(expected_d_cache_data);
 			check_d_cache_stall(1'b0);
-			check_cache_data_valid(1'b1);
+			check_cache_ready(1'b1);
 
 			check_slot_tag(slot_index,tag);
 			check_expected_slot_data(slot_index,expected_slot_data);
@@ -559,14 +594,14 @@ task request_and_check;
 			@(posedge clock);
 			#1;
 			$display("i_cache in first cycle of IDLE state after getting back from FINISH, when expected_request_tag == LOAD_INVALID or expected_request_tag == LOAD_VALID_!MATCH_CLEAN or expected_request_tag == STORE_INVALID or expected_request_tag == STORE_VALID_!MATCH_CLEAN");
-			check_state(IDLE);
+			check_d_cache_state(IDLE);
 			check_memory_request_valid(1'b0);
 			check_memory_request(REQUEST_NOTHING);
 			check_memory_address(10'd0);
 			check_memory_write_data({4{DEFAULT_CACHE_VALUE }});
 			check_expected_d_cache_data(expected_d_cache_data);
 			check_d_cache_stall(1'b0);
-			check_cache_data_valid(1'b0);
+			check_cache_ready(1'b1);
 
 			check_slot_tag(slot_index,tag);
 			check_expected_slot_data(slot_index,expected_slot_data);
@@ -602,7 +637,7 @@ task check_writeback_reset;
 	$display("Starting the writeback process after reset");
 	#1;
 	check_still_after_reset(1'b1);
-	check_state(WRITE_BACK_AFTER_RESET);
+	check_d_cache_state(WRITE_BACK_AFTER_RESET);
 	check_write_back_index(3'd0);
 	check_request_tag(WRITE_AFTER_RESET);
 
@@ -618,13 +653,14 @@ task check_writeback_reset;
 
 			else begin
 				$display("Not Writing back slot 0");
-				check_state(WRITE_BACK_AFTER_RESET);
+				check_d_cache_state(WRITE_BACK_AFTER_RESET);
 				check_memory_request_valid(1'b0);
 				check_memory_request(REQUEST_NOTHING);
 				check_memory_address(10'd0);
 				check_memory_write_data({4{DEFAULT_CACHE_VALUE}});
 
 			end	
+			check_cache_ready(1'b0);
 			check_d_cache_stall(1'b1);
 			check_still_after_reset(1'b1);
 			check_slot_tag(2'd0,4'd0);
@@ -640,13 +676,14 @@ task check_writeback_reset;
 
 			else begin
 				$display("Not Writing back slot 1");
-								check_state(WRITE_BACK_AFTER_RESET);
+				check_d_cache_state(WRITE_BACK_AFTER_RESET);
 				check_memory_request_valid(1'b0);
 				check_memory_request(REQUEST_NOTHING);
 				check_memory_address(10'd0);
 				check_memory_write_data({4{DEFAULT_CACHE_VALUE}});
 
 			end
+			check_cache_ready(1'b0);
 			check_d_cache_stall(1'b1);
 			check_still_after_reset(1'b1);
 			check_slot_tag(2'd1,4'd0);
@@ -662,12 +699,13 @@ task check_writeback_reset;
 
 			else begin
 				$display("Not Writing back slot 2");
-				check_state(WRITE_BACK_AFTER_RESET);
+				check_d_cache_state(WRITE_BACK_AFTER_RESET);
 				check_memory_request_valid(1'b0);
 				check_memory_request(REQUEST_NOTHING);
 				check_memory_address(10'd0);
 				check_memory_write_data({4{DEFAULT_CACHE_VALUE}});
 			end
+			check_cache_ready(1'b0);
 			check_d_cache_stall(1'b1);
 			check_still_after_reset(1'b1);
 			check_slot_tag(2'd2,4'd0);
@@ -683,12 +721,13 @@ task check_writeback_reset;
 
 			else begin
 				$display("Not Writing back slot 3");
-				check_state(WRITE_BACK_AFTER_RESET);
+				check_d_cache_state(WRITE_BACK_AFTER_RESET);
 				check_memory_request_valid(1'b0);
 				check_memory_request(REQUEST_NOTHING);
 				check_memory_address(10'd0);
 				check_memory_write_data({4{DEFAULT_CACHE_VALUE}});
 			end
+			check_cache_ready(1'b0);
 			check_d_cache_stall(1'b1);
 			check_still_after_reset(1'b1);
 			check_slot_tag(2'd3,4'd0);
@@ -706,17 +745,16 @@ task check_writeback_reset;
 				$display("Done writing back, in first cycle of IDLE now");
 				check_d_cache_stall(1'b0);
 				check_still_after_reset(1'b0);
-				check_state(IDLE);
+				check_d_cache_state(IDLE);
 				check_memory_request_valid(1'b0);
 				check_memory_request(REQUEST_NOTHING);
 				check_memory_address(10'd0);
 				check_memory_write_data({4{DEFAULT_CACHE_VALUE}});
-
+				check_cache_ready(1'b1);
 	end
 
 
 endtask
-
 
 initial begin
 	clock = 1'b0;
@@ -757,7 +795,7 @@ initial begin
 
 	@(posedge clock);
 	#1;
-	check_state(IDLE);
+	check_d_cache_state(IDLE);
 	check_still_after_reset(1'b0);
 	
 	
@@ -866,7 +904,7 @@ initial begin
 
 	request_and_check(1'b1, STORE, 32'd203, {22'd0,4'd2,2'd3,2'd3, 2'b00 }, {4'd1,2'd3,4'd0} ,{32'd47, 32'd46,32'd45, 32'd44 }, {32'd103, 32'd30,32'd29, 32'd140 },
 	32'd203, 1'b1,  {32'd203, 32'd46,32'd45, 32'd44 }, 4'b1111, 4'b0000, STORE_VALID_MISS_DIRTY  );
-	/*	
+	
 	//reset now and check after reset operation.
 	reset_n = 1'b0;
 	cpu_request_valid = 1'b0;
@@ -875,8 +913,7 @@ initial begin
 	cpu_address = 32'd0;
 	memory_data = 128'd0;
 	memory_ready = 1'b1;
-	errors = 0;
-	test_number = 0;
+
 	
 	#1;
 	reset_n = 1'b1;
@@ -886,6 +923,7 @@ initial begin
 	check_writeback_reset(4'b1111,4'b0000, {4'd2,2'd0,4'b0000},{4'd2,2'd1,4'b0000},{4'd2,2'd2,4'b0000},{4'd2,2'd3,4'b0000},
 			   {32'd35, 32'd34,32'd33, 32'd200 }, {32'd39, 32'd38,32'd201, 32'd36 }, {32'd43, 32'd202,32'd41, 32'd40 }, {32'd203, 32'd46,32'd45, 32'd44 } );
 				
+		
 	//store invalid slots now.
 	request_and_check(1'b1, STORE, 32'd210, {22'd0,4'd2,2'd0,2'd1, 2'b00 }, 10'd0 ,{32'd35, 32'd34,32'd33, 32'd200 }, {4{DEFAULT_CACHE_VALUE}},
 	32'd210, 1'b1,  {32'd35, 32'd34,32'd210, 32'd200 }, 4'b0001, 4'b1110, STORE_INVALID );
@@ -899,7 +937,36 @@ initial begin
 	request_and_check(1'b1, STORE, 32'd213, {22'd0,4'd2,2'd3,2'd0, 2'b00 }, 10'd0 ,{32'd203, 32'd46,32'd45, 32'd44 }, {4{DEFAULT_CACHE_VALUE}},
 	32'd213, 1'b1,  {32'd203, 32'd46,32'd45, 32'd213}, 4'b1111, 4'b0000, STORE_INVALID  );
 	
-	*/
+// request_and_check(test_cpu_request_valid[1], test_cpu_request[2], test_cpu_write_data[32], test_cpu_address[32],  expected_writeback_address[10], test_memory_data[128] ,expected_memory_write_data[128],
+//                   expected_d_cache_data[32], expected_d_cache_stall[1], expected_slot_data[128], expected_slot_valid[4], expected_slot_clean[4], expected_request_tag[3]);
+
+
+	//cpu request = 0, cache should hold the last load/store data.
+	request_and_check(1'b0, REQUEST_NOTHING, DEFAULT_CACHE_VALUE, {22'd0,4'd2,2'd0,2'd1, 2'b00 }, 10'd0 ,{32'd35, 32'd34,32'd33, 32'd200 }, {4{DEFAULT_CACHE_VALUE}},
+	32'd210, 1'b0,  {32'd35, 32'd34,32'd210, 32'd200 }, 4'b1111, 4'b0000, DO_NOTHING );
+
+	request_and_check(1'b0, REQUEST_NOTHING, DEFAULT_CACHE_VALUE, {22'd0,4'd2,2'd1,2'd2, 2'b00 }, 10'd0 ,{32'd39, 32'd38,32'd201, 32'd36 }, {4{DEFAULT_CACHE_VALUE}},
+	32'd211, 1'b0,  {32'd39, 32'd211,32'd201, 32'd36 }, 4'b1111, 4'b0000, DO_NOTHING   );
+
+	request_and_check(1'b0, REQUEST_NOTHING, DEFAULT_CACHE_VALUE, {22'd0,4'd2,2'd2,2'd3, 2'b00 }, 10'd0 ,{32'd43, 32'd202,32'd41, 32'd40 }, {4{DEFAULT_CACHE_VALUE}},
+	32'd212, 1'b0,  {32'd212, 32'd202,32'd41, 32'd40 }, 4'b1111, 4'b0000, DO_NOTHING );
+
+	request_and_check(1'b0, REQUEST_NOTHING, DEFAULT_CACHE_VALUE, {22'd0,4'd2,2'd3,2'd0, 2'b00 }, 10'd0 ,{32'd203, 32'd46,32'd45, 32'd44 }, {4{DEFAULT_CACHE_VALUE}},
+	32'd213, 1'b0,  {32'd203, 32'd46,32'd45, 32'd213}, 4'b1111, 4'b0000, DO_NOTHING  );	
+
+	//cpu request = 1 but REQUEST_NOTHING, cache should hold the last load/store data.
+	request_and_check(1'b1, REQUEST_NOTHING, DEFAULT_CACHE_VALUE, {22'd0,4'd2,2'd0,2'd1, 2'b00 }, 10'd0 ,{32'd35, 32'd34,32'd33, 32'd200 }, {4{DEFAULT_CACHE_VALUE}},
+	32'd210, 1'b0,  {32'd35, 32'd34,32'd210, 32'd200 }, 4'b1111, 4'b0000, DO_NOTHING );
+
+	request_and_check(1'b1, REQUEST_NOTHING, DEFAULT_CACHE_VALUE, {22'd0,4'd2,2'd1,2'd2, 2'b00 }, 10'd0 ,{32'd39, 32'd38,32'd201, 32'd36 }, {4{DEFAULT_CACHE_VALUE}},
+	32'd211, 1'b0,  {32'd39, 32'd211,32'd201, 32'd36 }, 4'b1111, 4'b0000, DO_NOTHING   );
+
+	request_and_check(1'b1, REQUEST_NOTHING, DEFAULT_CACHE_VALUE, {22'd0,4'd2,2'd2,2'd3, 2'b00 }, 10'd0 ,{32'd43, 32'd202,32'd41, 32'd40 }, {4{DEFAULT_CACHE_VALUE}},
+	32'd212, 1'b0,  {32'd212, 32'd202,32'd41, 32'd40 }, 4'b1111, 4'b0000, DO_NOTHING );
+
+	request_and_check(1'b1, REQUEST_NOTHING, DEFAULT_CACHE_VALUE, {22'd0,4'd2,2'd3,2'd0, 2'b00 }, 10'd0 ,{32'd203, 32'd46,32'd45, 32'd44 }, {4{DEFAULT_CACHE_VALUE}},
+	32'd213, 1'b0,  {32'd203, 32'd46,32'd45, 32'd213}, 4'b1111, 4'b0000, DO_NOTHING  );
+	
 
 	if (errors == 0)
         $display("ALL D_cache TESTS PASSED");
@@ -911,4 +978,3 @@ initial begin
 end
 
 endmodule
-

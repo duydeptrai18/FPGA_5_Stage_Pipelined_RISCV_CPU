@@ -40,8 +40,7 @@ reg [3:0] slot_tag [0:3]; //slot_tag[0] belongs to slot 0.
 
 reg still_after_reset; //=1 indicates that the cache is still writing back dirty and valid slots to memory after reset.
 reg [2:0] write_back_index; //Represents the current slot that is being written back to memory after reset.
-reg cache_data_valid; //Internal valid flag that indicates the request is finished, this will be used to unstall the cache in the //always combination block that controls the stall logic.
-
+reg cache_ready; //Internal valid flag 
 //state
 reg [2:0] state;
 localparam WRITE_BACK_AFTER_RESET = 3'd0; //State to write back the dirty valid slot into memory
@@ -87,19 +86,19 @@ localparam WRITE_AFTER_RESET = 3'd7;
 //The always combinational logic that determines when to stall the cpu.
 // In reset, the cpu is not stalled.
 //After reset, the cpu is stalled to wait for the cache to write back dirty valid slot to memory.
-//cache_data_valid = 1, indicates that the cpu_request is finished and cpu can continue operating.
 //If the slot is invalid, stall is required to retrieve the data.
 //If the slot is valid and the tag doesn't match, stall is required to retrieve the data, and write back if applicable.
 always @(*) begin
+	
 	d_cache_stall = 1'b0;
 	
 	if(still_after_reset) d_cache_stall = 1'b1;
 
-	else if(cache_data_valid) d_cache_stall = 1'b0;
+	else if(!cache_ready) d_cache_stall = 1'b1;
 
-	else if(!slot_valid[slot_index]) d_cache_stall = 1'b1;
+	else if(cpu_request_valid && !slot_valid[slot_index]) d_cache_stall = 1'b1;
 
-	else if(!hit_tag) d_cache_stall = 1'b1;
+	else if(cpu_request_valid && !hit_tag) d_cache_stall = 1'b1;
 	
 end
 
@@ -107,7 +106,7 @@ end
 always @(posedge clock or negedge reset_n) begin
 	if(!reset_n) begin 
 		state <= WRITE_BACK_AFTER_RESET; // go in this state after reset to write back.
-		cache_data_valid <= 1'b0;
+		cache_ready <= 1'b0;
 		still_after_reset <= 1'b1;// go in this state after reset to write back.
 		write_back_index<=3'b00;
 		request_tag<= WRITE_AFTER_RESET;
@@ -143,13 +142,14 @@ always @(posedge clock or negedge reset_n) begin
 			state<= IDLE;
 			write_back_index <= 3'd0;
 			still_after_reset<=1'b0;
+			cache_ready <= 1'b1;
 		end
 
 		//write_back_index indicates the current slot location
 		else if(slot_valid[write_back_index] && !slot_clean[write_back_index]) begin //if slot is valid and slot is dirty, we write back.
 			memory_request_valid <= 1'b1;
 			memory_request <= WRITE;
-			memory_address <= {slot_tag[write_back_index], write_back_index,4'b0000}; //{tag, slot_index, 4'b0000} = 10-bit value, 
+			memory_address <= {slot_tag[write_back_index], write_back_index[1:0],4'b0000}; //{tag, slot_index, 4'b0000} = 10-bit value, 
 			memory_write_data[31:0] <= memory[write_back_index][0];
 			memory_write_data[63:32] <= memory[write_back_index][1];
 			memory_write_data[95:64] <= memory[write_back_index][2];
@@ -181,6 +181,7 @@ always @(posedge clock or negedge reset_n) begin
 				memory_request_valid <= 1'b1;
 				memory_request <= READ;
 				memory_address <= cpu_address[9:0]; 
+				cache_ready <= 1'b0;
 			end
 
 			else if(bit_valid) begin//if the slot is valid
@@ -197,6 +198,7 @@ always @(posedge clock or negedge reset_n) begin
 						memory_request_valid <= 1'b1;
 						memory_request <= READ;
 						memory_address <= cpu_address[9:0];
+						cache_ready <= 1'b0;
 					end
 
 					else if(!bit_clean) begin //if the slot is dirty, write back to memory the old data, then read from memory the new data.
@@ -208,6 +210,7 @@ always @(posedge clock or negedge reset_n) begin
 						memory_write_data[63:32] <= memory[slot_index][1];
 						memory_write_data[95:64] <= memory[slot_index][2];
 						memory_write_data[127:96] <= memory[slot_index][3];
+						cache_ready <= 1'b0;
 					end
 				end
 
@@ -222,7 +225,8 @@ always @(posedge clock or negedge reset_n) begin
 				request_tag <= STORE_INVALID;
 				memory_request_valid <= 1'b1;
 				memory_request <= READ;
-				memory_address <= cpu_address[9:0];				
+				memory_address <= cpu_address[9:0];	
+				cache_ready <= 1'b0;			
 				
 			end
 
@@ -241,7 +245,8 @@ always @(posedge clock or negedge reset_n) begin
 						request_tag <= STORE_VALID_MISS_CLEAN;
 						memory_request_valid <= 1'b1;
 						memory_request <= READ;
-						memory_address <= cpu_address[9:0];						
+						memory_address <= cpu_address[9:0];		
+						cache_ready <= 1'b0;
 					end
 
 					else if(!bit_clean) begin //if the slot is dirty, write back to memory the old data, then read from memory the new data, then modify store location, then mark dirty = 1.
@@ -254,6 +259,7 @@ always @(posedge clock or negedge reset_n) begin
 						memory_write_data[63:32] <= memory[slot_index][1];
 						memory_write_data[95:64] <= memory[slot_index][2];
 						memory_write_data[127:96] <= memory[slot_index][3];
+						cache_ready <= 1'b0;
 		
 					end
 				end
@@ -276,7 +282,7 @@ always @(posedge clock or negedge reset_n) begin
 
 			if(memory_data_valid) begin //when the memory presents the new data
 		
-				//store it into cache and mark valid = 1, then go to state FINISH.
+				//store it into cache and mark ready = 1, then go to state FINISH.
 				memory[slot_index][0] <= memory_data[31:0];
 				memory[slot_index][1] <= memory_data[63:32];
 				memory[slot_index][2] <= memory_data[95:64];
@@ -284,7 +290,7 @@ always @(posedge clock or negedge reset_n) begin
 				slot_valid[slot_index] <= 1'b1;
 				slot_tag[slot_index] <= tag;
 				state <= FINISH;
-				cache_data_valid <= 1'b1;
+				cache_ready <= 1'b1;
 				
 //if the request is the load scenarios showed below, keep the slot clean.				
 if(request_tag == LOAD_INVALID || request_tag == LOAD_VALID_MISS_CLEAN || request_tag == LOAD_VALID_MISS_DIRTY) begin
@@ -331,7 +337,6 @@ else if (request_tag == STORE_INVALID || request_tag == STORE_VALID_MISS_CLEAN |
 
 		//reset back and go back to IDLE state
 		state<= IDLE;
-		cache_data_valid <= 1'b0;
 		memory_request_valid <= 1'b0;
 		memory_request <= REQUEST_NOTHING;
 		memory_address <= 10'd0; //{tag, slot_index, 4'b00}
