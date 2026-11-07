@@ -10,8 +10,6 @@ module next_program_counter(
 	input [31:0] branch_jump_pc,
 	input stall,
 	input branch,
-	input i_cache_stall,
-	input cpu_request_i_cache,
 	input [1:0] jump,
 	input alu_zero,
 	input alu_bit_0,
@@ -77,18 +75,13 @@ always @(*) begin
 			 endcase	
 		
 		end
-		
-		else if (i_cache_stall) 
-			next_pc = pc;
+
 		
 		else if(jump==JUMP_JAL) 
 			next_pc = branch_jump_pc + immediate;	
 			
 		else if(jump==JUMP_JALR) 
 			next_pc = (register_data + immediate) & 32'hFFFFFFFE;	
-			
-		else if (!cpu_request_i_cache)
-			next_pc = pc;
 			
 	end
 end

@@ -15,7 +15,13 @@ module cpu_top(
 //declaration:-----------------------
 //5 stages registers:
 
-
+assign debug_write_register_enable = mem_wb_safe_write_register;
+assign debug_rd                    = mem_wb_rd;
+assign debug_register_write_data   = register_write_data;
+assign debug_write_memory_enable   = ex_mem_safe_write_memory;
+assign debug_memory_address        = ex_mem_alu_result;
+assign debug_memory_write_data     = ex_mem_register_read_data_2;
+assign debug_pc                    = pc;
 
 
 //1.if/id:
@@ -113,20 +119,6 @@ wire safe_write_memory = write_memory && instruction_valid && reset_n ;
 wire [1:0] safe_jump = instruction_valid ? jump: 2'b00;
 wire safe_branch = branch && instruction_valid;
 
-//i_cache_system
-
-wire [127:0] memory_data;
-wire memory_ready;
-wire memory_data_valid;
-
-wire memory_request_valid;
-wire memory_request;
-wire [9:0] memory_next_pc;
-
-wire i_cache_stall;
-wire [1:0] i_cache_debug_state;
-wire [1:0] memory_debug_state;
-
 //write back MUX
 localparam WB_ALU       = 2'b00; //also when writeback is not needed. 
 localparam WB_MEMORY    = 2'b01;
@@ -150,20 +142,9 @@ localparam AUIPC  = 7'b0010111;
 //stall 
 reg stall;
 
-//flush
 wire flush = id_ex_safe_jump || take_branch; 
 
-wire cpu_request_i_cache = !flush && !safe_branch && !safe_jump; //if branch or jump is in id stage, we pause reading for 1 cycle and wait for the branch or jump to resolve in ex stage
-//because we don't want the i_cache to enter its requesting mode while there is a possibility of jumping or branching.
 
-//debug
-assign debug_write_register_enable = mem_wb_safe_write_register;
-assign debug_rd                    = mem_wb_rd;
-assign debug_register_write_data   = register_write_data;
-assign debug_write_memory_enable   = ex_mem_safe_write_memory;
-assign debug_memory_address        = ex_mem_alu_result;
-assign debug_memory_write_data     = ex_mem_register_read_data_2;
-assign debug_pc                    = pc;
 
 //MAIN MODULES:-------------------------
 program_counter program_counter_unit(//
@@ -177,8 +158,6 @@ next_program_counter next_program_counter_unit(//
     .pc(pc),
 	 .branch_jump_pc(id_ex_pc),
 	 .stall(stall),
-	 .i_cache_stall(i_cache_stall),
-	 .cpu_request_i_cache(cpu_request_i_cache),
     .branch(id_ex_safe_branch),
     .jump(id_ex_safe_jump),
     .alu_zero(alu_zero),
@@ -190,68 +169,29 @@ next_program_counter next_program_counter_unit(//
     .next_pc(next_pc)
 );
 
-i_cache i_cache_unit (
-    .clock(clock),
-    .reset_n(reset_n),
-	 .cpu_request(cpu_request_i_cache),
-    .cpu_next_pc(pc),
-    .memory_data(memory_data),
-    .memory_ready(memory_ready),
-    .memory_data_valid(memory_data_valid),
-    .memory_request_valid(memory_request_valid),
-    .memory_request(memory_request),
-    .memory_next_pc(memory_next_pc),
-    .next_instruction(instruction),
-    .i_cache_stall(i_cache_stall), 
-    .debug_state(i_cache_debug_state)
-);	
-
-
-slow_instruction_memory slow_instruction_memory_unit(
-    .clock(clock),
-    .reset_n(reset_n),
-    .address(memory_next_pc),
-    .request_valid(memory_request_valid),
-    .request(memory_request),
-    .ready(memory_ready),
-    .valid(memory_data_valid),
-    .read_data(memory_data),
-	 .debug_state(memory_debug_state)
+instruction_memory instruction_memory_unit(//
+	.address(pc),
+	.data(instruction)
 );
 
-
 always @(posedge clock or negedge reset_n) begin
-
-    	if (!reset_n) begin
-		  if_id_instruction <= 32'h00000013;
+    if (!reset_n) begin
+		  if_id_instruction <= 32'd0;
         if_id_pc <= 32'd0;
 	 end
 	 
-	else if(flush) begin
-		  if_id_instruction <= 32'h00000013;
-        	 if_id_pc <= 32'd0;
-	 end
-
-   else if(stall) begin
-		if_id_instruction <= if_id_instruction;
-        	if_id_pc <= if_id_pc;
+	 else if(flush) begin
+		  if_id_instruction <= 32'd0;
+        if_id_pc <= 32'd0;
 	 end
 	 
-
-	else if(i_cache_stall) begin
-		if_id_instruction <= 32'h00000013;
-        	if_id_pc <= 32'd0;
-			
-
-	end
-	 
-   else begin
-		 if_id_instruction <= instruction;
-        	 if_id_pc <= pc;
-	end
+    else if(!stall) begin
+		  if_id_instruction <= instruction;
+        if_id_pc <= pc;
+	 end
 end
 
-//id stage
+
 
 main_decoder main_decoder_unit(//
     .instruction(if_id_instruction),
@@ -303,7 +243,7 @@ always @(posedge clock or negedge reset_n) begin
 		  id_ex_safe_branch <= 1'b0;
 		  id_ex_writeback_source <= WB_ALU;
 		  id_ex_rd <= 5'd0;
-        	  id_ex_pc <= 32'd0;		
+        id_ex_pc <= 32'd0;		
 		  id_ex_immediate <= 32'd0;  
 		  id_ex_opcode <= 7'd0; 
 		  id_ex_funct3 <=3'd0;
@@ -317,7 +257,7 @@ always @(posedge clock or negedge reset_n) begin
 		  id_ex_safe_branch <= 1'b0;
 		  id_ex_writeback_source <= WB_ALU;
 		  id_ex_rd <= 5'd0;
-        	  id_ex_pc <= 32'd0;		
+        id_ex_pc <= 32'd0;		
 		  id_ex_immediate <= 32'd0;  
 		  id_ex_opcode <= 7'd0;
 		  id_ex_funct3 <=3'd0;	 
@@ -333,7 +273,7 @@ always @(posedge clock or negedge reset_n) begin
 		  id_ex_safe_branch <= safe_branch;	
 		  id_ex_writeback_source <= writeback_source;
 		  id_ex_rd <= rd;	
-        	  id_ex_pc <= if_id_pc;	
+        id_ex_pc <= if_id_pc;	
 		  id_ex_immediate <= immediate;	
 		  id_ex_opcode <= opcode;
 		  id_ex_funct3 <=funct3;
@@ -544,7 +484,7 @@ always @(posedge clock or negedge reset_n) begin
 		  id_ex_alu_input_2 <= 32'd0;
 	 else if(alu_input_2_control == ALU_IMMEDIATE)
         id_ex_alu_input_2 <= immediate;
-	 else if( rs2_address != 5'd0) begin
+	 else if(rs2_address != 5'd0) begin
 		  case (opcode)//opcode's instruction in ID stage
 		  
 			  R_TYPE, BRANCH: begin //these are the ones that may need forwarding
