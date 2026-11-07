@@ -45,7 +45,8 @@ reg [31:0] memory [0:255]; // 2^8-1; so only need 10-bit address
 
 assign debug_state = state;
 initial begin
-	$readmemh("slow_instruction_memory_test.mem",memory);
+	//$readmemh("slow_instruction_memory_test.mem",memory); for self test bench
+	$readmemh("basic_isa_selftest.mem",memory);//basic self test
 end
 
 

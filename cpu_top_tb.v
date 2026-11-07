@@ -123,7 +123,40 @@ initial begin
     for (i = 0; i < 256; i = i + 1)
         cpu_top_dut.slow_instruction_memory_unit.memory[i] = 32'h00000013;
 		  
+	//Test jump backward to see if evicted slot can be written back	  
+cpu_top_dut.slow_instruction_memory_unit.memory[0] =
+    {1'b0, 10'd32, 1'b0, 8'd0, 5'd1, JAL}; // jal x1, +64 -> memory[16]; x1 = 4
+
+cpu_top_dut.slow_instruction_memory_unit.memory[1] =
+    {12'd2, 5'd0, 3'b000, 5'd2, I_TYPE}; // addi x2, x0, 2
+
+cpu_top_dut.slow_instruction_memory_unit.memory[2] =
+    {12'd3, 5'd0, 3'b000, 5'd3, I_TYPE}; // addi x3, x0, 3
+
+cpu_top_dut.slow_instruction_memory_unit.memory[3] =
+    {20'd0, 5'd0, JAL}; // jal x0, 0 -> stay at memory[3]
+
+
+cpu_top_dut.slow_instruction_memory_unit.memory[16] =
+    {12'd4, 5'd0, 3'b000, 5'd4, I_TYPE}; // addi x4, x0, 4
+
+cpu_top_dut.slow_instruction_memory_unit.memory[17] =
+    {12'd5, 5'd0, 3'b000, 5'd5, I_TYPE}; // addi x5, x0, 5
+
+cpu_top_dut.slow_instruction_memory_unit.memory[18] =
+    {12'd0, 5'd1, 3'b000, 5'd0, JALR}; // jalr x0, 0(x1) -> memory[1]
+			
+	 repeat (50) @(posedge clock);
+	 #1;
+	 
+    check_register(5'd1,  32'd4);
+    check_register(5'd2,  32'd2);	
+    check_register(5'd3,  32'd3);
+    check_register(5'd4,  32'd4);
+    check_register(5'd5,  32'd5);	 
 		  
+		  
+		/*  test counter down until branch is not taken
 cpu_top_dut.slow_instruction_memory_unit.memory[0] =
     {12'd5, 5'd0, 3'b000, 5'd1, I_TYPE}; // addi x1, x0, 5
 
@@ -144,7 +177,42 @@ cpu_top_dut.slow_instruction_memory_unit.memory[4] =
 	 #1;
 	 
     check_register(5'd1,  32'd5);
-    check_register(5'd2,  32'd5);	 
+    check_register(5'd2,  32'd5);	 */
+	 
+	 
+/* test jump to instruction that is missed, and to see if instruction after jump execute	 
+cpu_top_dut.slow_instruction_memory_unit.memory[0] =
+    {12'd1, 5'd0, 3'b000, 5'd1, I_TYPE}; // addi x1, x0, 1
+
+cpu_top_dut.slow_instruction_memory_unit.memory[1] =
+    {12'd2, 5'd0, 3'b000, 5'd2, I_TYPE}; // addi x2, x0, 2
+
+cpu_top_dut.slow_instruction_memory_unit.memory[2] =
+    {1'b0, 10'd12, 1'b0, 8'd0, 5'd5, JAL}; // jal x5, +24 -> memory[8]
+
+cpu_top_dut.slow_instruction_memory_unit.memory[3] =
+    {12'd100, 5'd0, 3'b000, 5'd1, I_TYPE}; // addi x1, x0, 100 -> must not execute
+
+cpu_top_dut.slow_instruction_memory_unit.memory[4] =
+    {12'd200, 5'd0, 3'b000, 5'd2, I_TYPE}; // addi x2, x0, 200 -> must not execute
+
+cpu_top_dut.slow_instruction_memory_unit.memory[8] =
+    {12'd3, 5'd0, 3'b000, 5'd3, I_TYPE}; // addi x3, x0, 3
+
+cpu_top_dut.slow_instruction_memory_unit.memory[9] =
+    {12'd4, 5'd0, 3'b000, 5'd4, I_TYPE}; // addi x4, x0, 4
+
+cpu_top_dut.slow_instruction_memory_unit.memory[10] =
+    {20'd0, 5'd0, JAL}; // jal x0, 0 -> stay at memory[10]
+	 
+	 repeat (50) @(posedge clock);
+	 #1;
+	 
+    check_register(5'd1,  32'd1);
+    check_register(5'd2,  32'd2);
+	     check_register(5'd3,  32'd3);
+    check_register(5'd4,  32'd4);
+	 check_register(5'd5,  32'd12);*/
 
 		  
 		  
@@ -179,96 +247,175 @@ cpu_top_dut.instruction_memory_unit.memory[5] =
 	 
 	 */
 	 
-	 /*
-
+	
+/*
 	 
     // Shared operand: x1 = 4.
     // Entries 1–3 remain NOPs so x1 is ready before test 1.
-    cpu_top_dut.instruction_memory_unit.memory[0] =
-        {12'd4, 5'd0, 3'b000, 5'd1, I_TYPE};
+cpu_top_dut.slow_instruction_memory_unit.memory[0] =
+    {12'd4, 5'd0, 3'b000, 5'd1, I_TYPE}; // addi x1, x0, 4
 
 
-    // Test 1: Immediate dependency on rs1.
-    cpu_top_dut.instruction_memory_unit.memory[4] =
-        {12'd4, 5'd0, 3'b000, 5'd2, I_TYPE}; // addi x2, x0, 4
+// Test 1: Immediate dependency on rs1.
+cpu_top_dut.slow_instruction_memory_unit.memory[1] =
+    {12'd4, 5'd0, 3'b000, 5'd2, I_TYPE}; // addi x2, x0, 4
 
-    cpu_top_dut.instruction_memory_unit.memory[5] =
-        {7'd0, 5'd1, 5'd2, 3'b000, 5'd3, R_TYPE}; // add x3, x2, x1 -> 8
+cpu_top_dut.slow_instruction_memory_unit.memory[2] =
+    {7'd0, 5'd1, 5'd2, 3'b000, 5'd3, R_TYPE}; // add x3, x2, x1 -> 8
 
+
+// Test 2: Immediate dependency on rs2.
+cpu_top_dut.slow_instruction_memory_unit.memory[3] =
+    {12'd5, 5'd0, 3'b000, 5'd4, I_TYPE}; // addi x4, x0, 5
+
+cpu_top_dut.slow_instruction_memory_unit.memory[4] =
+    {7'd0, 5'd4, 5'd1, 3'b000, 5'd5, R_TYPE}; // add x5, x1, x4 -> 9
+
+
+// Test 3: Both operands need the same new value.
+cpu_top_dut.slow_instruction_memory_unit.memory[5] =
+    {12'd6, 5'd0, 3'b000, 5'd6, I_TYPE}; // addi x6, x0, 6
+
+cpu_top_dut.slow_instruction_memory_unit.memory[6] =
+    {7'd0, 5'd6, 5'd6, 3'b000, 5'd7, R_TYPE}; // add x7, x6, x6 -> 12
+
+
+// Test 4: Operands need results from different instructions.
+cpu_top_dut.slow_instruction_memory_unit.memory[7] =
+    {12'd7, 5'd0, 3'b000, 5'd8, I_TYPE}; // addi x8, x0, 7
+
+cpu_top_dut.slow_instruction_memory_unit.memory[8] =
+    {12'd8, 5'd0, 3'b000, 5'd9, I_TYPE}; // addi x9, x0, 8
+
+cpu_top_dut.slow_instruction_memory_unit.memory[9] =
+    {7'd0, 5'd9, 5'd8, 3'b000, 5'd10, R_TYPE}; // add x10, x8, x9 -> 15
+
+
+// Test 5a: One unrelated instruction between producer and consumer.
+cpu_top_dut.slow_instruction_memory_unit.memory[10] =
+    {12'd9, 5'd0, 3'b000, 5'd11, I_TYPE}; // addi x11, x0, 9
+
+cpu_top_dut.slow_instruction_memory_unit.memory[11] =
+    {12'd99, 5'd0, 3'b000, 5'd12, I_TYPE}; // addi x12, x0, 99
+
+cpu_top_dut.slow_instruction_memory_unit.memory[12] =
+    {7'd0, 5'd1, 5'd11, 3'b000, 5'd13, R_TYPE}; // add x13, x11, x1 -> 13
+
+
+// Test 5b: Two unrelated instructions between producer and consumer.
+cpu_top_dut.slow_instruction_memory_unit.memory[13] =
+    {12'd10, 5'd0, 3'b000, 5'd14, I_TYPE}; // addi x14, x0, 10
+
+cpu_top_dut.slow_instruction_memory_unit.memory[14] =
+    {12'd21, 5'd0, 3'b000, 5'd15, I_TYPE}; // addi x15, x0, 21
+
+cpu_top_dut.slow_instruction_memory_unit.memory[15] =
+    {12'd22, 5'd0, 3'b000, 5'd16, I_TYPE}; // addi x16, x0, 22
+
+cpu_top_dut.slow_instruction_memory_unit.memory[16] =
+    {7'd0, 5'd1, 5'd14, 3'b000, 5'd17, R_TYPE}; // add x17, x14, x1 -> 14
+
+
+// Test 6: Two pending writes to the same register; newest wins.
+cpu_top_dut.slow_instruction_memory_unit.memory[17] =
+    {12'd11, 5'd0, 3'b000, 5'd18, I_TYPE}; // addi x18, x0, 11
+
+cpu_top_dut.slow_instruction_memory_unit.memory[18] =
+    {12'd12, 5'd0, 3'b000, 5'd18, I_TYPE}; // addi x18, x0, 12
+
+cpu_top_dut.slow_instruction_memory_unit.memory[19] =
+    {7'd0, 5'd1, 5'd18, 3'b000, 5'd19, R_TYPE}; // add x19, x18, x1 -> 16
+
+
+// Test 7: Chain of dependent updates.
+cpu_top_dut.slow_instruction_memory_unit.memory[20] =
+    {12'd4, 5'd0, 3'b000, 5'd20, I_TYPE}; // addi x20, x0, 4
+
+cpu_top_dut.slow_instruction_memory_unit.memory[21] =
+    {12'd1, 5'd20, 3'b000, 5'd20, I_TYPE}; // addi x20, x20, 1 -> 5
+
+cpu_top_dut.slow_instruction_memory_unit.memory[22] =
+    {12'd2, 5'd20, 3'b000, 5'd20, I_TYPE}; // addi x20, x20, 2 -> 7
 	 
-    // Test 2: Immediate dependency on rs2.
-    cpu_top_dut.instruction_memory_unit.memory[12] =
-        {12'd5, 5'd0, 3'b000, 5'd4, I_TYPE}; // addi x4, x0, 5
+// Test 11a: Forward BEQ operand; condition is false.
+cpu_top_dut.slow_instruction_memory_unit.memory[23] =
+    {12'd4, 5'd0, 3'b000, 5'd27, I_TYPE}; // addi x27, x0, 4
 
-    cpu_top_dut.instruction_memory_unit.memory[13] =
-        {7'd0, 5'd4, 5'd1, 3'b000, 5'd5, R_TYPE}; // add x5, x1, x4 -> 9
-
-
-    // Test 3: Both operands need the same new value.
-    cpu_top_dut.instruction_memory_unit.memory[20] =
-        {12'd6, 5'd0, 3'b000, 5'd6, I_TYPE}; // addi x6, x0, 6
-
-    cpu_top_dut.instruction_memory_unit.memory[21] =
-        {7'd0, 5'd6, 5'd6, 3'b000, 5'd7, R_TYPE}; // add x7, x6, x6 -> 12
+cpu_top_dut.slow_instruction_memory_unit.memory[24] =
+    {7'd15, 5'd0, 5'd27, 3'b000, 4'd12, 1'b0, BRANCH};
+// beq x27, x0, +504 -> memory[150] if taken.
+// 4 == 0 is false, so branch is not taken.
 
 
-    // Test 4: Operands need results from different instructions.
-    cpu_top_dut.instruction_memory_unit.memory[28] =
-        {12'd7, 5'd0, 3'b000, 5'd8, I_TYPE}; // addi x8, x0, 7
+// Test 11b: Forward BLT operands; condition is false.
+cpu_top_dut.slow_instruction_memory_unit.memory[25] =
+    {12'd8, 5'd0, 3'b000, 5'd28, I_TYPE}; // addi x28, x0, 8
 
-    cpu_top_dut.instruction_memory_unit.memory[29] =
-        {12'd8, 5'd0, 3'b000, 5'd9, I_TYPE}; // addi x9, x0, 8
+cpu_top_dut.slow_instruction_memory_unit.memory[26] =
+    {12'd4, 5'd0, 3'b000, 5'd29, I_TYPE}; // addi x29, x0, 4
 
-    cpu_top_dut.instruction_memory_unit.memory[30] =
-        {7'd0, 5'd9, 5'd8, 3'b000, 5'd10, R_TYPE}; // add x10, x8, x9 -> 15
+cpu_top_dut.slow_instruction_memory_unit.memory[27] =
+    {7'd15, 5'd29, 5'd28, 3'b100, 4'd6, 1'b0, BRANCH};
+// blt x28, x29, +492 -> memory[150] if taken.
+// 8 < 4 is false, so branch is not taken.
+		  
+// Test 12: Forward results from LUI and AUIPC.
+cpu_top_dut.slow_instruction_memory_unit.memory[28] =
+    {20'd4, 5'd5, LUI}; // lui x5, 4 -> x5 = 32'h00004000
+
+cpu_top_dut.slow_instruction_memory_unit.memory[29] =
+    {12'd1, 5'd5, 3'b000, 5'd6, I_TYPE}; // addi x6, x5, 1 -> x6 = 32'h00004001
+
+cpu_top_dut.slow_instruction_memory_unit.memory[30] =
+    {20'd0, 5'd7, AUIPC}; // auipc x7, 0 -> x7 = 120
+
+cpu_top_dut.slow_instruction_memory_unit.memory[31] =
+    {12'd4, 5'd7, 3'b000, 5'd8, I_TYPE}; // addi x8, x7, 4 -> x8 = 124
+
+
+// Test 15: x0 must remain 0.
+cpu_top_dut.slow_instruction_memory_unit.memory[32] =
+    {12'd7, 5'd0, 3'b000, 5'd0, I_TYPE}; // addi x0, x0, 7 -> x0 remains 0
+
+cpu_top_dut.slow_instruction_memory_unit.memory[33] =
+    {7'b0000000, 5'd2, 5'd0, 3'b000, 5'd11, R_TYPE}; // add x11, x0, x2 -> x11 = x2
+
+
+// Test 16: Test flush when branch is taken.
+cpu_top_dut.slow_instruction_memory_unit.memory[34] =
+    {7'd0, 5'd2, 5'd1, 3'b000, 4'd6, 1'b0, BRANCH};
+// beq x1, x2, +12 -> memory[37] if equal
+
+cpu_top_dut.slow_instruction_memory_unit.memory[35] =
+    {12'd5, 5'd0, 3'b000, 5'd12, I_TYPE}; // addi x12, x0, 5 -> must be flushed if taken
+
+cpu_top_dut.slow_instruction_memory_unit.memory[36] =
+    {12'd6, 5'd0, 3'b000, 5'd13, I_TYPE}; // addi x13, x0, 6 -> must be flushed if taken
+
+
+// Test 17: Forward to JALR.
+cpu_top_dut.slow_instruction_memory_unit.memory[37] =
+    {12'd164, 5'd0, 3'b000, 5'd14, I_TYPE}; // addi x14, x0, 164
+
+cpu_top_dut.slow_instruction_memory_unit.memory[38] =
+    {12'd0, 5'd14, 3'b000, 5'd15, JALR};
+// jalr x15, 0(x14) -> memory[41]; x15 = 156
+
+cpu_top_dut.slow_instruction_memory_unit.memory[39] =
+    {12'd1, 5'd0, 3'b000, 5'd16, I_TYPE}; // addi x16, x0, 1 -> must be flushed
+
+cpu_top_dut.slow_instruction_memory_unit.memory[40] =
+    {12'd2, 5'd0, 3'b000, 5'd17, I_TYPE}; // addi x17, x0, 2 -> must be flushed
+
+cpu_top_dut.slow_instruction_memory_unit.memory[41] =
+    {12'd0, 5'd15, 3'b000, 5'd18, I_TYPE}; // addi x18, x15, 0 -> x18 = 156		  
+		  
+	cpu_top_dut.slow_instruction_memory_unit.memory[42] =
+    {20'd0, 5'd0, JAL}; // jal x0, 0 -> stay at memory[42]
 	 
-
-    // Test 5a: One unrelated instruction between producer and consumer.
-    cpu_top_dut.instruction_memory_unit.memory[36] =
-        {12'd9, 5'd0, 3'b000, 5'd11, I_TYPE}; // addi x11, x0, 9
-
-    cpu_top_dut.instruction_memory_unit.memory[37] =
-        {12'd99, 5'd0, 3'b000, 5'd12, I_TYPE}; // addi x12, x0, 99
-
-    cpu_top_dut.instruction_memory_unit.memory[38] =
-        {7'd0, 5'd1, 5'd11, 3'b000, 5'd13, R_TYPE}; // add x13, x11, x1 -> 13
-
-
-    // Test 5b: Two unrelated instructions between producer and consumer.
-    cpu_top_dut.instruction_memory_unit.memory[44] =
-        {12'd10, 5'd0, 3'b000, 5'd14, I_TYPE}; // addi x14, x0, 10
-
-    cpu_top_dut.instruction_memory_unit.memory[45] =
-        {12'd21, 5'd0, 3'b000, 5'd15, I_TYPE}; // addi x15, x0, 21
-
-    cpu_top_dut.instruction_memory_unit.memory[46] =
-        {12'd22, 5'd0, 3'b000, 5'd16, I_TYPE}; // addi x16, x0, 22
-
-    cpu_top_dut.instruction_memory_unit.memory[47] =
-        {7'd0, 5'd1, 5'd14, 3'b000, 5'd17, R_TYPE}; // add x17, x14, x1 -> 14
-
-
-    // Test 6: Two pending writes to the same register; newest wins.
-    cpu_top_dut.instruction_memory_unit.memory[52] =
-        {12'd11, 5'd0, 3'b000, 5'd18, I_TYPE}; // addi x18, x0, 11
-
-    cpu_top_dut.instruction_memory_unit.memory[53] =
-        {12'd12, 5'd0, 3'b000, 5'd18, I_TYPE}; // addi x18, x0, 12
-
-    cpu_top_dut.instruction_memory_unit.memory[54] =
-        {7'd0, 5'd1, 5'd18, 3'b000, 5'd19, R_TYPE}; // add x19, x18, x1 -> 16
-
-
-    // Test 7: Chain of dependent updates.
-    cpu_top_dut.instruction_memory_unit.memory[60] =
-        {12'd4, 5'd0, 3'b000, 5'd20, I_TYPE}; // addi x20, x0, 4
-
-    cpu_top_dut.instruction_memory_unit.memory[61] =
-        {12'd1, 5'd20, 3'b000, 5'd20, I_TYPE}; // addi x20, x20, 1 -> 5
-
-    cpu_top_dut.instruction_memory_unit.memory[62] =
-        {12'd2, 5'd20, 3'b000, 5'd20, I_TYPE}; // addi x20, x20, 2 -> 7
-
+	 
+	 
+ /*
 	 // Test 8a: Store-address forwarding.
 	 cpu_top_dut.instruction_memory_unit.memory[63] =
 		  {12'd16, 5'd0, 3'b000, 5'd21, I_TYPE}; // addi x21, x0, 16
@@ -300,47 +447,16 @@ cpu_top_dut.instruction_memory_unit.memory[5] =
 		  {12'd42, 5'd0, 3'b000, 5'd26, I_TYPE}; // addi x26, x0, 42
 
 	 cpu_top_dut.instruction_memory_unit.memory[71] =
-		  {7'd0, 5'd26, 5'd25, 3'b010, 5'd0, STORE}; // sw x26, 0(x25)
+		  {7'd0, 5'd26, 5'd25, 3'b010, 5'd0, STORE}; // sw x26, 0(x25)*/
 
 
-	 // Test 11a: Forward BEQ operand; condition is false.
-	 cpu_top_dut.instruction_memory_unit.memory[72] =
-	  	  {12'd4, 5'd0, 3'b000, 5'd27, I_TYPE}; // addi x27, x0, 4
 
-	 cpu_top_dut.instruction_memory_unit.memory[73] =
-		  {7'd9, 5'd0, 5'd27, 3'b000, 4'd10, 1'b0, BRANCH};
-	 // beq x27, x0, +308 -> memory[150] if taken.
-	 // x27 = 4, so branch is not taken.
-
-
-	 // Test 11b: Forward BLT operands; condition is false.
-	 cpu_top_dut.instruction_memory_unit.memory[74] =
-		  {12'd8, 5'd0, 3'b000, 5'd28, I_TYPE}; // addi x28, x0, 8
-
-	 cpu_top_dut.instruction_memory_unit.memory[75] =
-		  {12'd4, 5'd0, 3'b000, 5'd29, I_TYPE}; // addi x29, x0, 4
-
-	 cpu_top_dut.instruction_memory_unit.memory[76] =
-		  {7'd9, 5'd29, 5'd28, 3'b100, 4'd4, 1'b0, BRANCH};
-	 // blt x28, x29, +296 -> memory[150] if taken.
-	 // 8 < 4 is false, so branch is not taken.
 	 
 	 //Reset registers here
 	 
-	 // Test 12: Forward results from LUI and AUIPC.
-	 cpu_top_dut.instruction_memory_unit.memory[85] =
-		  {20'd4, 5'd5, LUI}; // lui x5, 4 -> x5 = 32'h00004000
-
-	 cpu_top_dut.instruction_memory_unit.memory[86] =
-		  {12'd1, 5'd5, 3'b000, 5'd6, I_TYPE}; // addi x6, x5, 1 -> x6 = 32'h00004001
-
-	 cpu_top_dut.instruction_memory_unit.memory[87] =
-		  {20'd0, 5'd7, AUIPC}; // auipc x7, 0 -> x7 = 348
-
-	 cpu_top_dut.instruction_memory_unit.memory[88] =
-		  {12'd4, 5'd7, 3'b000, 5'd8, I_TYPE}; // addi x8, x7, 4 -> x8 = 352
+	 
 		  
-		  
+	/*	  
 	 // Test 13: Load-use dependency requiring a stall.
 	 // Load 42 from byte address 32, then immediately use it in ADD.
 	 cpu_top_dut.instruction_memory_unit.memory[89] =
@@ -357,45 +473,11 @@ cpu_top_dut.instruction_memory_unit.memory[5] =
 	 cpu_top_dut.instruction_memory_unit.memory[92] =
 		  {7'd0, 5'd10, 5'd2, 3'b010, 5'd4, STORE}; // sw x10, 4(x2)		  
 		  
-	 //Test 15: x0 must remain 0
-	 cpu_top_dut.instruction_memory_unit.memory[93] =
-		  {12'd7, 5'd0, 3'b000, 5'd0, I_TYPE}; // addi x0, x0, 7 -> x0 remains 0
+	 */
 
-	 cpu_top_dut.instruction_memory_unit.memory[94] =
-		  {7'b0000000, 5'd2, 5'd0, 3'b000, 5'd11, R_TYPE}; // add x11, x0, x2 -> x10 = x2
-
-	 
-	 
-	 //Test 16: Test flush when branch is taken	
-	 cpu_top_dut.instruction_memory_unit.memory[95] =
-		  {7'd0, 5'd2, 5'd1, 3'b000, 4'd6, 1'b0, BRANCH};
-	 // beq x1, x2, +12 -> memory[98] if equal
-
-	 cpu_top_dut.instruction_memory_unit.memory[96] =
-		  {12'd5, 5'd0, 3'b000, 5'd12, I_TYPE}; // addi x12, x0, 5
-
-	 cpu_top_dut.instruction_memory_unit.memory[97] =
-		  {12'd6, 5'd0, 3'b000, 5'd13, I_TYPE}; // addi x13, x0, 6
-
-	 //Test 17: Forward to jalr	  
-	 cpu_top_dut.instruction_memory_unit.memory[98] =
-		  {12'd408, 5'd0, 3'b000, 5'd14, I_TYPE}; // addi x14, x0, 408
-
-	 cpu_top_dut.instruction_memory_unit.memory[99] =
-		  {12'd0, 5'd14, 3'b000, 5'd15, JALR};
-	 // jalr x15, 0(x14) -> memory[102], x15 = 400
-
-		 
-	 
-	 cpu_top_dut.instruction_memory_unit.memory[100] =
-		  {12'd1, 5'd0, 3'b000, 5'd16, I_TYPE}; // addi x16, x0, 1
-
-	 cpu_top_dut.instruction_memory_unit.memory[101] =
-		  {12'd2, 5'd0, 3'b000, 5'd17, I_TYPE}; // addi x17, x0, 2
-
-	 cpu_top_dut.instruction_memory_unit.memory[102] =
-		  {12'd0, 5'd15, 3'b000, 5'd18, I_TYPE}; // addi x18, x15, 0 -> x18 = 400
-
+		  
+		  
+		  /*	
 	 //Test 18: Jal
 	 cpu_top_dut.instruction_memory_unit.memory[103] =
 		  {1'b0, 10'd34, 1'b0, 8'd0, 5'd19, JAL};
@@ -462,17 +544,17 @@ cpu_top_dut.instruction_memory_unit.memory[5] =
 	cpu_top_dut.instruction_memory_unit.memory[129] =
 		 {7'd0, 5'd8, 5'd0, 3'b000, 5'd30, R_TYPE}; // add x30, x0, x8 -> 352
 		 
+		 */
 
-	
-	 cpu_top_dut.instruction_memory_unit.memory[150] =
+/*	
+	 cpu_top_dut.slow_instruction_memory_unit.memory[150] =
 		  {12'd99, 5'd0, 3'b000, 5'd30, I_TYPE}; // addi x30, x0, 99	  
     
-	 #1;
-    reset_n = 1'b1;
+
 
 	 
 	 
-	 repeat (83) @(posedge clock);
+	 repeat (70) @(posedge clock);
 	 #1;
 	 
     check_register(5'd3,  32'd8); // Test 1
@@ -481,32 +563,42 @@ cpu_top_dut.instruction_memory_unit.memory[5] =
     check_register(5'd10, 32'd15); // Test 4	 
     check_register(5'd13, 32'd13); // Test 5a
     check_register(5'd17, 32'd14); // Test 5b
+	 
+	 repeat (50) @(posedge clock);
+	 #1;
     check_register(5'd19, 32'd16); // Test 6
     check_register(5'd20, 32'd7);  // Test 7
+	 check_register(5'd28, 32'd8); //Test 11a	 
+	 check_register(5'd30, 32'dX); // Test 11b Must remain 0: branch not taken 
+	 repeat (70) @(posedge clock);
+	 #1;
+	 check_register(5'd6,32'h00004001);// Test 12a: Forward results from LUI and AUIPC.
+	 check_register(5'd8,32'd124); //test 12b
+	 check_register(5'd11,32'd4); //test 15 
+	 check_register(5'd12,32'd99); //test 16, old value
+	 check_register(5'd13,32'd13); //test 16, old value	 
+	 check_register(5'd16,32'd22); //test 17, old value
+	 check_register(5'd17,32'd14); //test 17, old value	 
+	 check_register(5'd18,32'd156); //test 17, return address
+*/	 
+	 
+	 /*
 	 check_data_memory(32'd16, 32'd4); // Test 8a
 	 check_register(5'd22, 32'd16);     // Test 8b	 
 	 check_register(5'd23, 32'd4);     // Test 8b
 	 check_data_memory(32'd4, 32'd42); // Test 9	
 	 check_data_memory(32'd32, 32'd42); //Test 10
-	 check_register(32'd28, 32'd8); //Test 11a	 
-	 check_register(5'd30, 32'dX); // Test 11b Must remain 0: branch not taken 
+
 	 //reset register
 	 repeat (60) @(posedge clock);
 	 #1;
 	 
-	 check_register(5'd6,32'h00004001);// Test 12a: Forward results from LUI and AUIPC.
-	 check_register(5'd8,32'd352); //test 12b
+
 	 check_register(5'd31,32'd42); //test 13	  
 	 check_register(5'd9,32'd46); //test 13
 	 check_register(5'd10,32'd42); //test 14	  
 	 check_data_memory(32'd8, 32'd42); //Test 14	 
-	 check_register(5'd11,32'd4); //test 15 
-
-	 check_register(5'd12,32'd99); //test 16, old value
-	 check_register(5'd13,32'd13); //test 16, old value	 
-	 check_register(5'd16,32'd22); //test 17, old value
-	 check_register(5'd17,32'd14); //test 17, old value	 
-	 check_register(5'd18,32'd400); //test 17, return address	 
+	 
 	 check_register(5'd20,32'd7); //test 18, old value
 	 check_register(5'd21,32'd16); //test 18, old value
 	 check_register(5'd19,32'd416); //test 18, return address 

@@ -153,7 +153,10 @@ reg stall;
 //flush
 wire flush = id_ex_safe_jump || take_branch; 
 
-wire cpu_request_i_cache = !flush && !safe_branch && !safe_jump; //if branch or jump is in id stage, we pause reading for 1 cycle and wait for the branch or jump to resolve in ex stage
+wire cpu_request_i_cache = !flush && !safe_branch && !safe_jump; 
+wire might_branch_jump = safe_branch || safe_jump;
+
+//if branch or jump is in id stage, we pause reading for 1 cycle and wait for the branch or jump to resolve in ex stage
 //because we don't want the i_cache to enter its requesting mode while there is a possibility of jumping or branching.
 
 //debug
@@ -178,7 +181,7 @@ next_program_counter next_program_counter_unit(//
 	 .branch_jump_pc(id_ex_pc),
 	 .stall(stall),
 	 .i_cache_stall(i_cache_stall),
-	 .cpu_request_i_cache(cpu_request_i_cache),
+	 .might_branch_jump(might_branch_jump),
     .branch(id_ex_safe_branch),
     .jump(id_ex_safe_jump),
     .alu_zero(alu_zero),
@@ -222,7 +225,7 @@ slow_instruction_memory slow_instruction_memory_unit(
 
 always @(posedge clock or negedge reset_n) begin
 
-    	if (!reset_n) begin
+    if (!reset_n) begin
 		  if_id_instruction <= 32'h00000013;
         if_id_pc <= 32'd0;
 	 end
@@ -231,23 +234,26 @@ always @(posedge clock or negedge reset_n) begin
 		  if_id_instruction <= 32'h00000013;
         	 if_id_pc <= 32'd0;
 	 end
-
-   else if(stall) begin
-		if_id_instruction <= if_id_instruction;
-        	if_id_pc <= if_id_pc;
-	 end
 	 
-
-	else if(i_cache_stall) begin
-		if_id_instruction <= 32'h00000013;
-        	if_id_pc <= 32'd0;
-			
-
+	else if(stall) begin // stall has higher prio than missed instruction. for example, when stall and the instruction is missed or when there is a possible branch or jump in id, stall will be resolved first, and hold the instructions in if and id.
+		 if_id_instruction <= if_id_instruction;
+       if_id_pc <= if_id_pc;
+	
 	end
 	 
-   else begin
+	else if(!cpu_request_i_cache) begin
+		if_id_instruction <= 32'h00000013;
+      if_id_pc <= 32'd0;
+	end
+	 
+	else if(i_cache_stall) begin
+		if_id_instruction <= 32'h00000013;
+      if_id_pc <= 32'd0;
+	end
+	 
+   else if(!stall) begin
 		 if_id_instruction <= instruction;
-        	 if_id_pc <= pc;
+       if_id_pc <= pc;
 	end
 end
 

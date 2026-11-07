@@ -11,7 +11,7 @@ module next_program_counter(
 	input stall,
 	input branch,
 	input i_cache_stall,
-	input cpu_request_i_cache,
+	input might_branch_jump,
 	input [1:0] jump,
 	input alu_zero,
 	input alu_bit_0,
@@ -43,6 +43,13 @@ always @(*) begin
 
     else begin
       next_pc = pc + 32'd4;
+		
+		//lower the if, higher its priority. For example in a miss but a branch or jump is taken, it has the priority
+		if(might_branch_jump)
+			 next_pc = pc;
+			
+		if (i_cache_stall) 
+			next_pc = pc;
 		
 		if(branch) begin
 			case(funct3)  
@@ -78,17 +85,14 @@ always @(*) begin
 		
 		end
 		
-		else if (i_cache_stall) 
-			next_pc = pc;
-		
 		else if(jump==JUMP_JAL) 
 			next_pc = branch_jump_pc + immediate;	
 			
 		else if(jump==JUMP_JALR) 
 			next_pc = (register_data + immediate) & 32'hFFFFFFFE;	
 			
-		else if (!cpu_request_i_cache)
-			next_pc = pc;
+
+			
 			
 	end
 end
