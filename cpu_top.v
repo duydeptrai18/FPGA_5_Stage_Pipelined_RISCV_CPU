@@ -15,13 +15,6 @@ module cpu_top(
 //declaration:-----------------------
 //5 stages registers:
 
-assign debug_write_register_enable = mem_wb_safe_write_register;
-assign debug_rd                    = mem_wb_rd;
-assign debug_register_write_data   = register_write_data;
-assign debug_write_memory_enable   = ex_mem_safe_write_memory;
-assign debug_memory_address        = ex_mem_alu_result;
-assign debug_memory_write_data     = ex_mem_register_read_data_2;
-assign debug_pc                    = pc;
 
 
 //1.if/id:
@@ -59,7 +52,7 @@ reg [6:0]  ex_mem_opcode;
 //4. mem/wb:
 reg        mem_wb_safe_write_register;
 reg [31:0] mem_wb_alu_result;
-reg [31:0] mem_wb_data_memory_read_data;
+reg [31:0] mem_wb_d_cache_data;
 reg [1:0]  mem_wb_writeback_source;
 reg [4:0]  mem_wb_rd;
 reg [31:0] mem_wb_pc;
@@ -97,8 +90,8 @@ wire alu_valid;
 //immediate generator
 wire [31:0] immediate;
 
-//data memory
-wire [31:0] data_memory_read_data;
+//d memory
+wire [31:0] d_cache_data;
 
 //register
 reg [31:0] register_write_data;
@@ -118,6 +111,15 @@ wire safe_write_register = write_register && instruction_valid && reset_n;
 wire safe_write_memory = write_memory && instruction_valid && reset_n ;
 wire [1:0] safe_jump = instruction_valid ? jump: 2'b00;
 wire safe_branch = branch && instruction_valid;
+
+//debug
+assign debug_write_register_enable = mem_wb_safe_write_register;
+assign debug_rd                    = mem_wb_rd;
+assign debug_register_write_data   = register_write_data;
+assign debug_write_memory_enable   = ex_mem_safe_write_memory;
+assign debug_memory_address        = ex_mem_alu_result;
+assign debug_memory_write_data     = ex_mem_register_read_data_2;
+assign debug_pc                    = pc;
 
 //write back MUX
 localparam WB_ALU       = 2'b00; //also when writeback is not needed. 
@@ -145,7 +147,31 @@ reg stall;
 wire flush = id_ex_safe_jump || take_branch; 
 
 
+//d_cache
+localparam REQUEST_NOTHING = 2'b00;
+localparam D_CACHE_LOAD = 2'b01;
+localparam D_CACHE_STORE = 2'b10;
+//from cpu
+reg cpu_request_valid_d_cache;
+reg [1:0] cpu_request_d_cache;
 
+//from d memory
+wire [127:0] d_memory_data;
+wire d_memory_data_valid;
+wire d_memory_ready;
+
+//to d memory
+wire d_memory_request_valid;
+wire [1:0] d_memory_request;
+wire [9:0] d_memory_address;
+wire [127:0] d_memory_write_data;
+
+//to cpu
+wire d_cache_stall;
+
+wire [1:0] d_memory_debug_state;
+
+wire stall_whole_cpu = d_cache_stall || stall;
 //MAIN MODULES:-------------------------
 program_counter program_counter_unit(//
    .clock(clock),
@@ -157,7 +183,7 @@ program_counter program_counter_unit(//
 next_program_counter next_program_counter_unit(//
     .pc(pc),
 	 .branch_jump_pc(id_ex_pc),
-	 .stall(stall),
+	 .stall(stall_whole_cpu),
     .branch(id_ex_safe_branch),
     .jump(id_ex_safe_jump),
     .alu_zero(alu_zero),
@@ -185,7 +211,7 @@ always @(posedge clock or negedge reset_n) begin
         if_id_pc <= 32'd0;
 	 end
 	 
-    else if(!stall) begin
+    else if(!stall_whole_cpu) begin
 		  if_id_instruction <= instruction;
         if_id_pc <= pc;
 	 end
@@ -265,7 +291,7 @@ always @(posedge clock or negedge reset_n) begin
 	 
 	 end
 	 
-    else if(!stall) begin
+    else if(!stall_whole_cpu) begin
 		  id_ex_alu_operation <= alu_operation;
 		  id_ex_safe_write_register <= safe_write_register;
 		  id_ex_safe_write_memory <= safe_write_memory;
@@ -313,8 +339,12 @@ always @(posedge clock or negedge reset_n) begin
 		  
 	 else if(flush) 	  
 		  id_ex_register_read_data_2 <= 32'd0;	 
+		  
+	 else if(d_cache_stall) 	  
+		  id_ex_register_read_data_2 <= id_ex_register_read_data_2;		  
 	 
 	 else begin
+	 
 		  if (opcode == STORE && rs2_address != 5'd0) begin
 						id_ex_register_read_data_2 <= register_read_data_2;
 						case (mem_wb_opcode)
@@ -345,7 +375,7 @@ always @(posedge clock or negedge reset_n) begin
 						end
 						
 						LOAD: begin
-							if(ex_mem_rd == rs2_address) id_ex_register_read_data_2 <= data_memory_read_data;
+							if(ex_mem_rd == rs2_address) id_ex_register_read_data_2 <= d_cache_data;
 						end
 						
 						default: begin // JAL, JALR, store, branch
@@ -393,6 +423,8 @@ always @(posedge clock or negedge reset_n) begin
 		  id_ex_alu_input_1 <= 32'd0;
 	 else if(flush) 	  
 		  id_ex_alu_input_1 <= 32'd0;	
+	 else if(d_cache_stall) 	  
+		  id_ex_alu_input_1 <= id_ex_alu_input_1;
     else if(alu_input_1_control == ALU_PC)
         id_ex_alu_input_1 <= if_id_pc;		  
 	 else if( rs1_address!= 5'd0 ) begin
@@ -428,7 +460,7 @@ always @(posedge clock or negedge reset_n) begin
 						end
 						
 						LOAD: begin
-							if(ex_mem_rd == rs1_address) id_ex_alu_input_1 <= data_memory_read_data;
+							if(ex_mem_rd == rs1_address) id_ex_alu_input_1 <= d_cache_data;
 							//else id_ex_alu_input_1 <= register_read_data_1;
 						end
 						
@@ -479,9 +511,11 @@ always @(posedge clock or negedge reset_n) begin
     if (!reset_n)
         id_ex_alu_input_2 <= 32'd0;
 	 else if(stall) 	  
-		  id_ex_alu_input_2 <= 32'd0;
+		  id_ex_alu_input_2 <= 32'd0;	
 	 else if(flush) 	  
 		  id_ex_alu_input_2 <= 32'd0;
+	 else if(d_cache_stall) 	  
+		  id_ex_alu_input_2 <= id_ex_alu_input_2;
 	 else if(alu_input_2_control == ALU_IMMEDIATE)
         id_ex_alu_input_2 <= immediate;
 	 else if(rs2_address != 5'd0) begin
@@ -517,7 +551,7 @@ always @(posedge clock or negedge reset_n) begin
 						end
 						
 						LOAD: begin
-							if(ex_mem_rd == rs2_address) id_ex_alu_input_2 <= data_memory_read_data;
+							if(ex_mem_rd == rs2_address) id_ex_alu_input_2 <= d_cache_data;
 						end
 						
 						default: begin // JAL, JALR, store, branch
@@ -579,7 +613,9 @@ always @(posedge clock or negedge reset_n) begin
 		  ex_mem_register_read_data_2 <= 32'd0;
 		  ex_mem_opcode <= 7'd0;
 	 end	  
-    else begin
+
+	 
+    else if(!d_cache_stall) begin
 		  ex_mem_alu_result <= alu_result;
 		  ex_mem_alu_zero <= alu_zero;	
 		  ex_mem_safe_write_register <= id_ex_safe_write_register;
@@ -595,29 +631,91 @@ end
 
 
 //MEM stage----------------------------------------------
-data_memory data_memory_unit(//
+d_cache d_cache_unit (
     .clock(clock),
-    .address(ex_mem_alu_result),
-    .write_enable(ex_mem_safe_write_memory),
-    .write_data(ex_mem_register_read_data_2),
-    .read_data(data_memory_read_data)
+    .reset_n(reset_n),
+    .cpu_request_valid(cpu_request_valid_d_cache),
+    .cpu_request(cpu_request_d_cache),
+    .cpu_write_data(ex_mem_register_read_data_2),
+    .cpu_address(ex_mem_alu_result),
+    .memory_data(d_memory_data),//from d memory
+    .memory_data_valid(d_memory_data_valid),
+    .memory_ready(d_memory_ready),
+    .memory_request_valid(d_memory_request_valid), //to d memory
+    .memory_request(d_memory_request),
+    .memory_address(d_memory_address),
+    .memory_write_data(d_memory_write_data),
+    .d_cache_data(d_cache_data),
+    .d_cache_stall(d_cache_stall)
 );
+
+slow_data_memory slow_data_memory_unit (
+    .clock(clock),
+    .reset_n(reset_n),
+    .address(d_memory_address),
+    .write_data(d_memory_write_data),
+    .request_valid(d_memory_request_valid),
+    .request(d_memory_request),
+    .ready(d_memory_ready),
+    .valid(d_memory_data_valid),
+    .read_data(d_memory_data),
+    .debug_state(d_memory_debug_state)
+);	
+
+always@(*) begin
+
+	if(!reset_n) begin
+		cpu_request_valid_d_cache<=1'b0;
+		cpu_request_d_cache<=REQUEST_NOTHING;
+	
+	end
+	
+	else if(ex_mem_opcode == STORE && ex_mem_safe_write_memory) begin 
+		cpu_request_valid_d_cache<=1'b1;
+		cpu_request_d_cache<=D_CACHE_STORE;
+	
+	end
+	
+	else if(ex_mem_opcode == LOAD && ex_mem_safe_write_register && ex_mem_rd != 5'd0) begin
+		cpu_request_valid_d_cache<=1'b1;
+		cpu_request_d_cache<=D_CACHE_LOAD;
+	end
+	
+	else begin
+		cpu_request_valid_d_cache<=1'b0;
+		cpu_request_d_cache<=REQUEST_NOTHING;
+	end
+
+
+end
 
 always @(posedge clock or negedge reset_n) begin
     if (!reset_n) begin
 		  mem_wb_safe_write_register <= 1'b0;
 		  mem_wb_alu_result <= 32'd0;
-		  mem_wb_data_memory_read_data <= 32'd0;		  
+		  mem_wb_d_cache_data <= 32'd0;		  
 		  mem_wb_writeback_source <= WB_ALU;
 		  mem_wb_rd <= 5'd0;
         mem_wb_pc <= 32'd0;	
 		  mem_wb_immediate <= 32'd0;	
 		  mem_wb_opcode <= 7'd0;
 	 end	 
+	 
+	 else if(d_cache_stall) begin
+		  mem_wb_safe_write_register <= 1'b0;
+		  mem_wb_alu_result <= 32'd0;
+		  mem_wb_d_cache_data <= 32'd0;		  
+		  mem_wb_writeback_source <= WB_ALU;
+		  mem_wb_rd <= 5'd0;
+        mem_wb_pc <= 32'd0;	
+		  mem_wb_immediate <= 32'd0;	
+		  mem_wb_opcode <= 7'd0;		
+	 end
+	 
     else begin
 		  mem_wb_safe_write_register <= ex_mem_safe_write_register;
 		  mem_wb_alu_result <= ex_mem_alu_result;
-		  mem_wb_data_memory_read_data <= data_memory_read_data;		  	
+		  mem_wb_d_cache_data <= d_cache_data;		  	
 		  mem_wb_writeback_source <= ex_mem_writeback_source;
 		  mem_wb_rd <= ex_mem_rd;
         mem_wb_pc <= ex_mem_pc;	
@@ -647,7 +745,7 @@ always @(*) begin
 	case(mem_wb_writeback_source)
 	
 	WB_ALU: register_write_data = mem_wb_alu_result;
-	WB_MEMORY: register_write_data = mem_wb_data_memory_read_data;
+	WB_MEMORY: register_write_data = mem_wb_d_cache_data;
 	WB_IMMEDIATE: register_write_data = mem_wb_immediate;
 	WB_PC4: register_write_data = mem_wb_pc + 32'd4;
 	

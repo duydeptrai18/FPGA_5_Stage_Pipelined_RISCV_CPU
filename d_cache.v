@@ -88,6 +88,16 @@ localparam WRITE_AFTER_RESET = 3'd7;
 //After reset, the cpu is stalled to wait for the cache to write back dirty valid slot to memory.
 //If the slot is invalid, stall is required to retrieve the data.
 //If the slot is valid and the tag doesn't match, stall is required to retrieve the data, and write back if applicable.
+
+initial begin
+    slot_valid = 4'b0000;
+    slot_clean = 4'b0000;
+	 slot_tag[0] = 4'd0;
+	 slot_tag[1] = 4'd0;
+	 slot_tag[2] = 4'd0;
+	 slot_tag[3] = 4'd0;
+end
+
 always @(*) begin
 	
 	d_cache_stall = 1'b0;

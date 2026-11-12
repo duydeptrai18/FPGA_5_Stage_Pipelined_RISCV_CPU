@@ -44,66 +44,52 @@ task check_register;
 	end
 endtask
 
-task check_data_memory;
-	input [31:0] read_address;
-	input [31:0] expected_read_data;
-	begin
-	  if (cpu_top_dut.data_memory_unit.memory[read_address[9:2]] !== expected_read_data) begin
-			errors = errors + 1;
-			$display("FAILED! Data memory address=%h: actual=%h expected=%h",read_address, cpu_top_dut.data_memory_unit.memory[read_address[9:2]],
-						expected_read_data);
-	  end
-	  else begin
-			$display("PASSED! Data memory address=%h: data=%h",read_address,
-						cpu_top_dut.data_memory_unit.memory[read_address[9:2]]);
-	  end
-	end
+task check_d_memory_slot_data;
+    input [9:0] address;
+    input [127:0] expected_memory_data;
+
+    reg [127:0] actual_memory_data;
+    begin
+        actual_memory_data = {
+            cpu_top_dut.slow_data_memory_unit.memory[{address[9:4], 2'b11}],
+            cpu_top_dut.slow_data_memory_unit.memory[{address[9:4], 2'b10}],
+            cpu_top_dut.slow_data_memory_unit.memory[{address[9:4], 2'b01}],
+            cpu_top_dut.slow_data_memory_unit.memory[{address[9:4], 2'b00}]
+        };
+
+        if (actual_memory_data !== expected_memory_data) begin
+            errors = errors + 1;
+            $display("FAIL address=%h data=%h expected=%h",
+                     address, actual_memory_data,
+                     expected_memory_data);
+        end
+        else
+            $display("PASS address=%h data=%h",
+                     address, actual_memory_data);
+    end
 endtask
 
-task check_pc;
-	input [31:0] expected_pc;
-	begin
-	  if (cpu_top_dut.program_counter_unit.pc !== expected_pc) begin
-			errors = errors + 1;
-			$display("FAILED! PC: actual=%h expected=%h",cpu_top_dut.program_counter_unit.pc,
-						expected_pc);
-	  end
-	  else begin
-			$display("PASSED! PC: %h",
-						cpu_top_dut.program_counter_unit.pc);
-	  end
-	end
-endtask
+task check_d_cache_slot_data;
+    input [1:0] slot_index;
+    input [127:0] expected_slot_data;
 
-task check_if_id_pc;
-	input [31:0] expected_pc;
-	begin
-	  if (cpu_top_dut.if_id_pc !== expected_pc) begin
-			errors = errors + 1;
-			$display("FAILED! if_id_pc: actual=%h expected=%h",cpu_top_dut.if_id_pc,
-						expected_pc);
-	  end
-	  else begin
-			$display("PASSED! if_id_pc: %h",
-						cpu_top_dut.if_id_pc);
-	  end
-	end
-endtask
+    reg [127:0] actual_slot_data;
+    begin
+        actual_slot_data = {
+            cpu_top_dut.d_cache_unit.memory[slot_index][3],
+            cpu_top_dut.d_cache_unit.memory[slot_index][2],
+            cpu_top_dut.d_cache_unit.memory[slot_index][1],
+            cpu_top_dut.d_cache_unit.memory[slot_index][0]
+        };
 
-
-task check_immediate;
-	input [31:0] expected_immediate;
-	begin
-	  if (cpu_top_dut.immediate_generator_unit.immediate !== expected_immediate) begin
-			errors = errors + 1;
-			$display("FAILED! Immediate: actual=%h expected=%h",cpu_top_dut.immediate_generator_unit.immediate,
-						expected_immediate);
-	  end
-	  else begin
-			$display("PASSED! Immediate: %h",
-						cpu_top_dut.immediate_generator_unit.immediate);
-	  end
-	end
+        if (actual_slot_data !== expected_slot_data) begin
+            errors = errors + 1;
+            $display("FAIL slot=%0d data=%h expected=%h",
+                     slot_index, actual_slot_data, expected_slot_data);
+        end
+        else
+            $display("PASS slot=%0d data=%h", slot_index, actual_slot_data);
+    end
 endtask
 
 initial begin
@@ -121,66 +107,9 @@ initial begin
 	 reset_n = 1'b1;
     // Fill unused locations with NOPs.
     for (i = 0; i < 256; i = i + 1)
-        cpu_top_dut.slow_instruction_memory_unit.memory[i] = 32'h00000013;
+        cpu_top_dut.instruction_memory_unit.memory[i] = 32'h00000013;
 		  
 		  
-cpu_top_dut.slow_instruction_memory_unit.memory[0] =
-    {12'd5, 5'd0, 3'b000, 5'd1, I_TYPE}; // addi x1, x0, 5
-
-cpu_top_dut.slow_instruction_memory_unit.memory[1] =
-    {12'd0, 5'd0, 3'b000, 5'd2, I_TYPE}; // addi x2, x0, 0
-
-cpu_top_dut.slow_instruction_memory_unit.memory[2] =
-    {12'd1, 5'd2, 3'b000, 5'd2, I_TYPE}; // addi x2, x2, 1
-
-cpu_top_dut.slow_instruction_memory_unit.memory[3] =
-    {1'b1, 6'b111111, 5'd2, 5'd1, 3'b001, 4'b1110, 1'b1, BRANCH}; // bne x1, x2, -4 -> memory[2]
-
-cpu_top_dut.slow_instruction_memory_unit.memory[4] =
-    {20'd0, 5'd0, JAL}; // jal x0, 0 -> stay at memory[4]
-	 
-	 
-	 repeat (50) @(posedge clock);
-	 #1;
-	 
-    check_register(5'd1,  32'd5);
-    check_register(5'd2,  32'd5);	 
-
-		  
-		  
-	/*cpu_top_dut.instruction_memory_unit.memory[0] =
-    {12'd2, 5'd0, 3'b000, 5'd1, I_TYPE}; // addi x1, x0, 2
-
-cpu_top_dut.instruction_memory_unit.memory[1] =
-    {12'd2, 5'd0, 3'b000, 5'd2, I_TYPE}; // addi x2, x0, 2
-
-cpu_top_dut.instruction_memory_unit.memory[2] =
-    {7'd0, 5'd2, 5'd1, 3'b000, 4'd6, 1'b0, BRANCH}; // beq x1, x2, +12 -> memory[5]
-
-// Wrong path: both instructions must be flushed.
-cpu_top_dut.instruction_memory_unit.memory[3] =
-    {12'd99, 5'd0, 3'b000, 5'd3, I_TYPE}; // addi x3, x0, 99
-
-cpu_top_dut.instruction_memory_unit.memory[4] =
-    {12'd88, 5'd0, 3'b000, 5'd4, I_TYPE}; // addi x4, x0, 88
-
-// Correct branch target.
-cpu_top_dut.instruction_memory_unit.memory[5] =
-    {12'd42, 5'd0, 3'b000, 5'd5, I_TYPE}; // addi x5, x0, 42
-	 
-	 
-	 repeat (15) @(posedge clock);
-	 #1;
-	 
-    check_register(5'd3,  32'dX);
-    check_register(5'd4,  32'dX);	 
-    check_register(5'd5,  32'd42);	 
-	 
-	 
-	 */
-	 
-	 /*
-
 	 
     // Shared operand: x1 = 4.
     // Entries 1–3 remain NOPs so x1 is ready before test 1.
@@ -462,18 +391,25 @@ cpu_top_dut.instruction_memory_unit.memory[5] =
 	cpu_top_dut.instruction_memory_unit.memory[129] =
 		 {7'd0, 5'd8, 5'd0, 3'b000, 5'd30, R_TYPE}; // add x30, x0, x8 -> 352
 		 
+// Test 24: Load from an untouched cache line, then use the result immediately.
+cpu_top_dut.instruction_memory_unit.memory[130] =
+    {12'd48, 5'd0, 3'b010, 5'd4, LOAD};  // lw x4, 48(x0)
 
+cpu_top_dut.instruction_memory_unit.memory[131] =
+    {12'd1, 5'd4, 3'b000, 5'd3, I_TYPE}; // addi x3, x4, 1
 	
 	 cpu_top_dut.instruction_memory_unit.memory[150] =
 		  {12'd99, 5'd0, 3'b000, 5'd30, I_TYPE}; // addi x30, x0, 99	  
-    
-	 #1;
-    reset_n = 1'b1;
 
 	 
 	 
-	 repeat (83) @(posedge clock);
-	 #1;
+@(posedge clock);
+while ((cpu_top_dut.debug_rd !== 5'd29) ||
+       (cpu_top_dut.debug_write_register_enable !== 1'b1))
+    @(posedge clock);
+#1; // Let the register write settle.
+//Test 1 and test 2
+$display("Test 1-11b");
 	 
     check_register(5'd3,  32'd8); // Test 1
     check_register(5'd5, 32'd9); // Test 2	 
@@ -483,23 +419,27 @@ cpu_top_dut.instruction_memory_unit.memory[5] =
     check_register(5'd17, 32'd14); // Test 5b
     check_register(5'd19, 32'd16); // Test 6
     check_register(5'd20, 32'd7);  // Test 7
-	 check_data_memory(32'd16, 32'd4); // Test 8a
+	 check_d_cache_slot_data(2'd1,   {32'd7, 32'd6, 32'd5, 32'd4}); // Test 8a
 	 check_register(5'd22, 32'd16);     // Test 8b	 
 	 check_register(5'd23, 32'd4);     // Test 8b
-	 check_data_memory(32'd4, 32'd42); // Test 9	
-	 check_data_memory(32'd32, 32'd42); //Test 10
+	 check_d_cache_slot_data(2'd0,   {32'd3, 32'd2, 32'd42, 32'd0}); // Test 9	
+	 check_d_cache_slot_data(2'd2,   {32'd11, 32'd10, 32'd9, 32'd42}); //Test 10
 	 check_register(32'd28, 32'd8); //Test 11a	 
 	 check_register(5'd30, 32'dX); // Test 11b Must remain 0: branch not taken 
 	 //reset register
-	 repeat (60) @(posedge clock);
-	 #1;
+@(posedge clock);
+while ((cpu_top_dut.debug_rd !== 5'd30) ||
+       (cpu_top_dut.debug_write_register_enable !== 1'b1))
+    @(posedge clock);
+#1; 
+$display("Remaining test");
 	 
 	 check_register(5'd6,32'h00004001);// Test 12a: Forward results from LUI and AUIPC.
 	 check_register(5'd8,32'd352); //test 12b
 	 check_register(5'd31,32'd42); //test 13	  
 	 check_register(5'd9,32'd46); //test 13
 	 check_register(5'd10,32'd42); //test 14	  
-	 check_data_memory(32'd8, 32'd42); //Test 14	 
+	 check_d_cache_slot_data(2'd0,   {32'd3, 32'd42, 32'd42, 32'd0}); //Test 14	 
 	 check_register(5'd11,32'd4); //test 15 
 
 	 check_register(5'd12,32'd99); //test 16, old value
@@ -515,13 +455,22 @@ cpu_top_dut.instruction_memory_unit.memory[5] =
 	 check_register(5'd23, 32'd42);
 	 check_register(5'd24,32'd42);
 	 check_register(5'd25,32'd42);
-	 check_data_memory(5'd12,32'dX);
-	 check_register(5'd30,32'd352);*/
+	 // Test 22: The flushed sw x27, 8(x1) must not write to byte address 12.
+	 check_d_memory_slot_data(10'd0, {32'd3, 32'd2,  32'd1,  32'd0});
+	 check_d_cache_slot_data(2'd0,   {32'd3, 32'd42, 32'd42, 32'd0});
+	 check_register(5'd30,32'd352);
+	 
+repeat(20) @(posedge clock);
+#1;
+	 $display("Test 24");
+    check_register(5'd4, 32'd12);
+    check_register(5'd3, 32'd13);	 
+
 	 
 	 if (errors == 0)
-        $display("ALL FORWARDING TESTS PASSED");
+        $display("ALL FORWARDING cpu_top_d_cache_forwarding_test TESTS PASSED");
     else
-        $display("%0d FORWARDING TESTS FAILED", errors);
+        $display("%0d FORWARDING cpu_top_d_cache_forwarding_test TESTS FAILED", errors);
 
     $finish;
 
