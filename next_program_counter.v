@@ -10,6 +10,8 @@ module next_program_counter(
 	input [31:0] branch_jump_pc,
 	input stall,
 	input branch,
+	input i_cache_stall,
+	input might_branch_jump,
 	input [1:0] jump,
 	input alu_zero,
 	input alu_bit_0,
@@ -41,7 +43,12 @@ always @(*) begin
 
     else begin
       next_pc = pc + 32'd4;
-		
+		//lower the if, higher its priority. For example in a miss but a branch or jump is taken, it has the priority
+		if(might_branch_jump)
+			 next_pc = pc;
+			
+		if (i_cache_stall) 
+			next_pc = pc;
 		if(branch) begin
 			case(funct3)  
 					 F3_BEQ: begin
