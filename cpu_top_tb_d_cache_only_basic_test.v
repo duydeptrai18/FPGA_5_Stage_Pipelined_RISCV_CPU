@@ -59,7 +59,7 @@ initial begin
     #1;
     reset_n = 1'b1;
 	
-	 repeat(500)@(posedge clock);
+	 repeat(1000)@(posedge clock);
 	 #1;
 	 
 	 check_register(5'd10,32'd0); //check whether it goes to pass

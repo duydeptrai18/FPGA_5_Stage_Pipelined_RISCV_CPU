@@ -44,21 +44,6 @@ task check_register;
 	end
 endtask
 
-task check_data_memory;
-	input [31:0] read_address;
-	input [31:0] expected_read_data;
-	begin
-	  if (cpu_top_dut.data_memory_unit.memory[read_address[9:2]] !== expected_read_data) begin
-			errors = errors + 1;
-			$display("FAILED! Data memory address=%h: actual=%h expected=%h",read_address, cpu_top_dut.data_memory_unit.memory[read_address[9:2]],
-						expected_read_data);
-	  end
-	  else begin
-			$display("PASSED! Data memory address=%h: data=%h",read_address,
-						cpu_top_dut.data_memory_unit.memory[read_address[9:2]]);
-	  end
-	end
-endtask
 
 task check_pc;
 	input [31:0] expected_pc;
@@ -120,7 +105,7 @@ initial begin
     #1;
     reset_n = 1'b1;
 	
-	 repeat(500)@(posedge clock);
+	 repeat(1000)@(posedge clock);
 	 #1;
 	 
 	 check_register(5'd10,32'd0); //check whether it goes to pass

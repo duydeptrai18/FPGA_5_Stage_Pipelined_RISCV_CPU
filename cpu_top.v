@@ -264,7 +264,13 @@ always @(posedge clock or negedge reset_n) begin
        if_id_pc <= if_id_pc;
 	
 	end
-	 
+	
+	else if(d_cache_stall) begin // stall has higher prio than missed instruction. for example, when stall and the instruction is missed or when there is a possible branch or jump in id, stall will be resolved first, and hold the instructions in if and id.
+		 if_id_instruction <= if_id_instruction;
+       if_id_pc <= if_id_pc;
+	
+	end
+	
 	else if(!cpu_request_i_cache) begin
 		if_id_instruction <= 32'h00000013;
       if_id_pc <= 32'd0;

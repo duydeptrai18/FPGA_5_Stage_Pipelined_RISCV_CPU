@@ -128,115 +128,115 @@ initial begin
     // Fill unused locations with NOPs.
 // Fill unused instruction memory with NOPs before loading the test.
 for (i = 0; i < 256; i = i + 1)
-    cpu_top_dut.instruction_memory_unit.memory[i] = 32'h00000013;
+    cpu_top_dut.slow_instruction_memory_unit.memory[i] = 32'h00000013;
 
 // Test 1: Load into four invalid cache slots.
-cpu_top_dut.instruction_memory_unit.memory[0] =
+cpu_top_dut.slow_instruction_memory_unit.memory[0] =
     {12'd0,  5'd0, 3'b010, 5'd1, LOAD}; // lw x1, 0(x0)  -> 0
 
-cpu_top_dut.instruction_memory_unit.memory[1] =
+cpu_top_dut.slow_instruction_memory_unit.memory[1] =
     {12'd20, 5'd0, 3'b010, 5'd2, LOAD}; // lw x2, 20(x0) -> 5
 
-cpu_top_dut.instruction_memory_unit.memory[2] =
+cpu_top_dut.slow_instruction_memory_unit.memory[2] =
     {12'd40, 5'd0, 3'b010, 5'd3, LOAD}; // lw x3, 40(x0) -> 10
 
-cpu_top_dut.instruction_memory_unit.memory[3] =
+cpu_top_dut.slow_instruction_memory_unit.memory[3] =
     {12'd60, 5'd0, 3'b010, 5'd4, LOAD}; // lw x4, 60(x0) -> 15
 
 // Test 2: Load a different word from each cached line.
-cpu_top_dut.instruction_memory_unit.memory[4] =
+cpu_top_dut.slow_instruction_memory_unit.memory[4] =
     {12'd4,  5'd0, 3'b010, 5'd5, LOAD}; // lw x5, 4(x0)  -> 1
 
-cpu_top_dut.instruction_memory_unit.memory[5] =
+cpu_top_dut.slow_instruction_memory_unit.memory[5] =
     {12'd24, 5'd0, 3'b010, 5'd6, LOAD}; // lw x6, 24(x0) -> 6
 
-cpu_top_dut.instruction_memory_unit.memory[6] =
+cpu_top_dut.slow_instruction_memory_unit.memory[6] =
     {12'd44, 5'd0, 3'b010, 5'd7, LOAD}; // lw x7, 44(x0) -> 11
 
-cpu_top_dut.instruction_memory_unit.memory[7] =
+cpu_top_dut.slow_instruction_memory_unit.memory[7] =
     {12'd48, 5'd0, 3'b010, 5'd8, LOAD}; // lw x8, 48(x0) -> 12
 	 
 // Test 3: Load a different tag into each valid, clean cache slot.
-cpu_top_dut.instruction_memory_unit.memory[8] =
+cpu_top_dut.slow_instruction_memory_unit.memory[8] =
     {12'd64,  5'd0, 3'b010, 5'd9,  LOAD}; // lw x9,  64(x0)  -> 16
-cpu_top_dut.instruction_memory_unit.memory[9] =
+cpu_top_dut.slow_instruction_memory_unit.memory[9] =
     {12'd84,  5'd0, 3'b010, 5'd10, LOAD}; // lw x10, 84(x0)  -> 21
-cpu_top_dut.instruction_memory_unit.memory[10] =
+cpu_top_dut.slow_instruction_memory_unit.memory[10] =
     {12'd104, 5'd0, 3'b010, 5'd11, LOAD}; // lw x11, 104(x0) -> 26
-cpu_top_dut.instruction_memory_unit.memory[11] =
+cpu_top_dut.slow_instruction_memory_unit.memory[11] =
     {12'd124, 5'd0, 3'b010, 5'd12, LOAD}; // lw x12, 124(x0) -> 31
 
 // Test 4: Store hits make all four slots dirty.
-cpu_top_dut.instruction_memory_unit.memory[12] =
+cpu_top_dut.slow_instruction_memory_unit.memory[12] =
     {12'd100, 5'd0, 3'b000, 5'd13, I_TYPE}; // addi x13, x0, 100
-cpu_top_dut.instruction_memory_unit.memory[13] =
+cpu_top_dut.slow_instruction_memory_unit.memory[13] =
     {7'd2, 5'd13, 5'd0, 3'b010, 5'd0, STORE}; // sw x13, 64(x0)
 
-cpu_top_dut.instruction_memory_unit.memory[14] =
+cpu_top_dut.slow_instruction_memory_unit.memory[14] =
     {12'd101, 5'd0, 3'b000, 5'd14, I_TYPE}; // addi x14, x0, 101
-cpu_top_dut.instruction_memory_unit.memory[15] =
+cpu_top_dut.slow_instruction_memory_unit.memory[15] =
     {7'd2, 5'd14, 5'd0, 3'b010, 5'd20, STORE}; // sw x14, 84(x0)
 
-cpu_top_dut.instruction_memory_unit.memory[16] =
+cpu_top_dut.slow_instruction_memory_unit.memory[16] =
     {12'd102, 5'd0, 3'b000, 5'd15, I_TYPE}; // addi x15, x0, 102
-cpu_top_dut.instruction_memory_unit.memory[17] =
+cpu_top_dut.slow_instruction_memory_unit.memory[17] =
     {7'd3, 5'd15, 5'd0, 3'b010, 5'd8, STORE}; // sw x15, 104(x0)
 
-cpu_top_dut.instruction_memory_unit.memory[18] =
+cpu_top_dut.slow_instruction_memory_unit.memory[18] =
     {12'd103, 5'd0, 3'b000, 5'd16, I_TYPE}; // addi x16, x0, 103
-cpu_top_dut.instruction_memory_unit.memory[19] =
+cpu_top_dut.slow_instruction_memory_unit.memory[19] =
     {7'd3, 5'd16, 5'd0, 3'b010, 5'd28, STORE}; // sw x16, 124(x0)		  
 	
 // Test 5: Load tag 0 again, forcing all four dirty tag 1 lines to write back.
-cpu_top_dut.instruction_memory_unit.memory[20] =
+cpu_top_dut.slow_instruction_memory_unit.memory[20] =
     {12'd0,  5'd0, 3'b010, 5'd17, LOAD}; // lw x17, 0(x0)  -> 0
-cpu_top_dut.instruction_memory_unit.memory[21] =
+cpu_top_dut.slow_instruction_memory_unit.memory[21] =
     {12'd20, 5'd0, 3'b010, 5'd18, LOAD}; // lw x18, 20(x0) -> 5
-cpu_top_dut.instruction_memory_unit.memory[22] =
+cpu_top_dut.slow_instruction_memory_unit.memory[22] =
     {12'd40, 5'd0, 3'b010, 5'd19, LOAD}; // lw x19, 40(x0) -> 10
-cpu_top_dut.instruction_memory_unit.memory[23] =
+cpu_top_dut.slow_instruction_memory_unit.memory[23] =
     {12'd60, 5'd0, 3'b010, 5'd20, LOAD}; // lw x20, 60(x0) -> 15
 
 // Test 6: Store to a different tag while all four slots are clean.
-cpu_top_dut.instruction_memory_unit.memory[24] =
+cpu_top_dut.slow_instruction_memory_unit.memory[24] =
     {12'd110, 5'd0, 3'b000, 5'd21, I_TYPE}; // addi x21, x0, 110
-cpu_top_dut.instruction_memory_unit.memory[25] =
+cpu_top_dut.slow_instruction_memory_unit.memory[25] =
     {7'd2, 5'd21, 5'd0, 3'b010, 5'd4, STORE}; // sw x21, 68(x0)
 
-cpu_top_dut.instruction_memory_unit.memory[26] =
+cpu_top_dut.slow_instruction_memory_unit.memory[26] =
     {12'd120, 5'd0, 3'b000, 5'd22, I_TYPE}; // addi x22, x0, 120
-cpu_top_dut.instruction_memory_unit.memory[27] =
+cpu_top_dut.slow_instruction_memory_unit.memory[27] =
     {7'd2, 5'd22, 5'd0, 3'b010, 5'd24, STORE}; // sw x22, 88(x0)
 
-cpu_top_dut.instruction_memory_unit.memory[28] =
+cpu_top_dut.slow_instruction_memory_unit.memory[28] =
     {12'd130, 5'd0, 3'b000, 5'd23, I_TYPE}; // addi x23, x0, 130
-cpu_top_dut.instruction_memory_unit.memory[29] =
+cpu_top_dut.slow_instruction_memory_unit.memory[29] =
     {7'd3, 5'd23, 5'd0, 3'b010, 5'd12, STORE}; // sw x23, 108(x0)
 
-cpu_top_dut.instruction_memory_unit.memory[30] =
+cpu_top_dut.slow_instruction_memory_unit.memory[30] =
     {12'd140, 5'd0, 3'b000, 5'd24, I_TYPE}; // addi x24, x0, 140
-cpu_top_dut.instruction_memory_unit.memory[31] =
+cpu_top_dut.slow_instruction_memory_unit.memory[31] =
     {7'd3, 5'd24, 5'd0, 3'b010, 5'd16, STORE}; // sw x24, 112(x0)
 	
 // Test 7: Store to tag 2, forcing dirty tag 1 lines to write back.
-cpu_top_dut.instruction_memory_unit.memory[32] =
+cpu_top_dut.slow_instruction_memory_unit.memory[32] =
     {12'd200, 5'd0, 3'b000, 5'd25, I_TYPE}; // addi x25, x0, 200
-cpu_top_dut.instruction_memory_unit.memory[33] =
+cpu_top_dut.slow_instruction_memory_unit.memory[33] =
     {7'd4, 5'd25, 5'd0, 3'b010, 5'd0, STORE}; // sw x25, 128(x0)
 
-cpu_top_dut.instruction_memory_unit.memory[34] =
+cpu_top_dut.slow_instruction_memory_unit.memory[34] =
     {12'd201, 5'd0, 3'b000, 5'd26, I_TYPE}; // addi x26, x0, 201
-cpu_top_dut.instruction_memory_unit.memory[35] =
+cpu_top_dut.slow_instruction_memory_unit.memory[35] =
     {7'd4, 5'd26, 5'd0, 3'b010, 5'd20, STORE}; // sw x26, 148(x0)
 
-cpu_top_dut.instruction_memory_unit.memory[36] =
+cpu_top_dut.slow_instruction_memory_unit.memory[36] =
     {12'd202, 5'd0, 3'b000, 5'd27, I_TYPE}; // addi x27, x0, 202
-cpu_top_dut.instruction_memory_unit.memory[37] =
+cpu_top_dut.slow_instruction_memory_unit.memory[37] =
     {7'd5, 5'd27, 5'd0, 3'b010, 5'd8, STORE}; // sw x27, 168(x0)
 
-cpu_top_dut.instruction_memory_unit.memory[38] =
+cpu_top_dut.slow_instruction_memory_unit.memory[38] =
     {12'd203, 5'd0, 3'b000, 5'd28, I_TYPE}; // addi x28, x0, 203
-cpu_top_dut.instruction_memory_unit.memory[39] =
+cpu_top_dut.slow_instruction_memory_unit.memory[39] =
     {7'd5, 5'd28, 5'd0, 3'b010, 5'd28, STORE}; // sw x28, 188(x0)
 	 
 
@@ -364,34 +364,34 @@ reset_n = 1'b1;
     // Fill unused locations with NOPs.
 // Fill unused instruction memory with NOPs before loading the test.
 for (i = 0; i < 256; i = i + 1)
-    cpu_top_dut.instruction_memory_unit.memory[i] = 32'h00000013;
+    cpu_top_dut.slow_instruction_memory_unit.memory[i] = 32'h00000013;
 	 
 // After warm reset: store into four invalid cache slots.
-cpu_top_dut.instruction_memory_unit.memory[0] =
+cpu_top_dut.slow_instruction_memory_unit.memory[0] =
     {12'd210, 5'd0, 3'b000, 5'd1, I_TYPE}; // addi x1, x0, 210
-cpu_top_dut.instruction_memory_unit.memory[1] =
+cpu_top_dut.slow_instruction_memory_unit.memory[1] =
     {7'd4, 5'd1, 5'd0, 3'b010, 5'd4, STORE}; // sw x1, 132(x0)
 
-cpu_top_dut.instruction_memory_unit.memory[2] =
+cpu_top_dut.slow_instruction_memory_unit.memory[2] =
     {12'd211, 5'd0, 3'b000, 5'd2, I_TYPE}; // addi x2, x0, 211
-cpu_top_dut.instruction_memory_unit.memory[3] =
+cpu_top_dut.slow_instruction_memory_unit.memory[3] =
     {7'd4, 5'd2, 5'd0, 3'b010, 5'd24, STORE}; // sw x2, 152(x0)
 
-cpu_top_dut.instruction_memory_unit.memory[4] =
+cpu_top_dut.slow_instruction_memory_unit.memory[4] =
     {12'd212, 5'd0, 3'b000, 5'd3, I_TYPE}; // addi x3, x0, 212
-cpu_top_dut.instruction_memory_unit.memory[5] =
+cpu_top_dut.slow_instruction_memory_unit.memory[5] =
     {7'd5, 5'd3, 5'd0, 3'b010, 5'd12, STORE}; // sw x3, 172(x0)
 
-cpu_top_dut.instruction_memory_unit.memory[6] =
+cpu_top_dut.slow_instruction_memory_unit.memory[6] =
     {12'd213, 5'd0, 3'b000, 5'd4, I_TYPE}; // addi x4, x0, 213
-cpu_top_dut.instruction_memory_unit.memory[7] =
+cpu_top_dut.slow_instruction_memory_unit.memory[7] =
     {7'd5, 5'd4, 5'd0, 3'b010, 5'd16, STORE}; // sw x4, 176(x0)
 
 // No memory operations: all four cache slots should stay unchanged.
-cpu_top_dut.instruction_memory_unit.memory[8]  = 32'h00000013;
-cpu_top_dut.instruction_memory_unit.memory[9]  = 32'h00000013;
-cpu_top_dut.instruction_memory_unit.memory[10] = 32'h00000013;
-cpu_top_dut.instruction_memory_unit.memory[11] = 32'h00000013;
+cpu_top_dut.slow_instruction_memory_unit.memory[8]  = 32'h00000013;
+cpu_top_dut.slow_instruction_memory_unit.memory[9]  = 32'h00000013;
+cpu_top_dut.slow_instruction_memory_unit.memory[10] = 32'h00000013;
+cpu_top_dut.slow_instruction_memory_unit.memory[11] = 32'h00000013;
 	 
 	 
 
