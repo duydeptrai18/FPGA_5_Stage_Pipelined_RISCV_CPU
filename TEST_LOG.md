@@ -13,3 +13,6 @@
 ## Nov3
 -In load or store operation where writing back first is needed,forgot to give memory address that the cpu is requesting, instead kept the writing old address which is wrong.
 - d_cache alone , all passed
+
+## Nov16
+- When designing DMA, I assume that memory will capture new write data right after it finishes writing old data in a burst. Then I put on the new data right after it announces finishing writing old data. That is not correct since I didnt have memory_ready to agree on the handshake. I Learnt that my design should be clearer and accomodate possible changes in the future. 
