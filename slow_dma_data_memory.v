@@ -8,12 +8,14 @@ module slow_dma_data_memory(
 	input [9:0] dma_start_address,
 	input [3:0] dma_beat_count,
 	input [31:0] dma_write_data,
-	input dma_write_data_valid, //to indicate when a new write data is valid	
+	input dma_memory_write_data_valid, //to indicate when a new write data is valid	
 	input dma_memory_read_data_ready, //to show when dma is ready to accept the read data
+	input dma_memory_write_ready,//to show when dma is ready to acknowledge the write
 
 	//to dma
-	output reg memory_ready,
-	output reg memory_dma_valid,
+	output reg memory_ready,//let dma knows it cannot request anymore
+	output reg memory_dma_valid,//let dma knows when a write or read is finished
+	output reg memory_dma_write_ready,//let dma knows when memory will accept the write data in a write burst
 	output reg [31:0] memory_read_data
 		
 );
@@ -49,6 +51,7 @@ always @(posedge clock or negedge reset_n) begin
 		memory_state<=IDLE;
 		memory_ready <= 1'b1;
 		memory_dma_valid <= 1'b0;
+		memory_dma_write_ready<=1'b0;
 		memory_read_data <= 32'd0;		
 		temp_address <=10'd0;
 		temp_write_data <=32'd0;
@@ -111,33 +114,38 @@ always @(posedge clock or negedge reset_n) begin
 
 		WRITE_PROCESSING: begin
 			if(counter < MEMORY_PROCESSING_CYCLES-3'd1) counter<=counter+3'b1;
-			
-			if(memory_dma_valid) begin
-				if(dma_write_data_valid) begin
-					counter<= 3'd0;
-					if(memory_counter_beat == dma_beat_count -4'd1) begin
-						temp_data<=32'd0;
-						temp_address<= 10'd0;
-						memory_dma_valid <= 1'b0;
-						memory_counter_beat<=4'd0;
-						state<= FINISH;
+
+			if(dma_memory_write_data_valid && memory_dma_write_ready) begin//when dma present new write data and memory is ready to accept it, start new write cycle.
+				counter<= 3'd0;
+				memory_dma_write_ready<=1'b0;
+				if(memory_counter_beat == dma_beat_count -4'd1) begin
+					temp_data<=32'd0;
+					temp_address<= 10'd0;
+					memory_dma_valid <= 1'b0;
+					memory_counter_beat<=4'd0;
+					state<= FINISH;
 								
-					end
-					else if (memory_counter_beat < dma_beat_count - 4'd1) begin										
-						temp_data<= dma_write_data;
-						temp_address<= temp_address + 10'd4;
-						memory_dma_valid <= 1'b0;
-						memory_counter_beat<= memory_counter_beat + 4'd1;
-						state<= READ_PROCESSING;
-					end
+				end
+				else if (memory_counter_beat < dma_beat_count - 4'd1) begin										
+					temp_data<= dma_write_data;
+					temp_address<= temp_address + 10'd4;
+					memory_dma_valid <= 1'b0;
+					memory_counter_beat<= memory_counter_beat + 4'd1;
+					state<= WRITE_PROCESSING;
 				end
 			end
 			
-			
-			else if(counter == MEMORY_PROCESSING_CYCLES-3'd1) begin //when the reading process is finished, read_data is present and valid is pulsed up.
-				memory[temp_address[9:2]] <= temp_data;		
-				memory_dma_valid <= 1'b1;
+			else if(memory_dma_valid && dma_memory_write_ready) begin //when memory finishes writing and dma acknowledge that, we deassert memory_dma_valid because we dont want dma to keep seeing that we have finished writing
+				memory_dma_valid <= 1'b0;
+				memory_dma_write_ready<=1'b1;
 			end
+			
+			else if(counter == MEMORY_PROCESSING_CYCLES-3'd1) begin //when the writing is completed, set counter like below so it can not keep writing 
+				counter <= MEMORY_PROCESSING_CYCLES;
+				memory[temp_address[9:2]] <= temp_data;
+				memory_dma_valid <= 1'b1;
+			end			
+
 		end
 		
 		
@@ -155,6 +163,4 @@ always @(posedge clock or negedge reset_n) begin
 		end
 end
 
-endmodule
-
-
+endmodule. saved dont say anything

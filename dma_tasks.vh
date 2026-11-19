@@ -3,80 +3,100 @@
 // Declare and initialize an integer errors in the testbench.
 // Every check prints its result. A mismatch increments errors.
 
-task check_memory_request_valid;
+task check_dma_memory_request_valid;
     input expected;
     begin
-        if (memory_request_valid !== expected) begin
+        if (dma_dut.dma_memory_request_valid !== expected) begin
             errors = errors + 1;
-            $display("FAIL %m: memory_request_valid expected 0x%0h, got 0x%0h",
-                     expected, memory_request_valid);
+            $display("FAIL %m: dma_memory_request_valid expected %b, got %b",
+                     expected, dma_dut.dma_memory_request_valid);
         end else begin
-            $display("PASS %m: memory_request_valid = 0x%0h", memory_request_valid);
+            $display("PASS %m: dma_memory_request_valid = %b",
+                     dma_dut.dma_memory_request_valid);
         end
     end
 endtask
 
-task check_memory_request;
+task check_dma_memory_request;
     input [1:0] expected;
     begin
-        if (memory_request !== expected) begin
+        if (dma_dut.dma_memory_request !== expected) begin
             errors = errors + 1;
-            $display("FAIL %m: memory_request expected 0x%0h, got 0x%0h",
-                     expected, memory_request);
+            $display("FAIL %m: dma_memory_request expected 0x%0h, got 0x%0h",
+                     expected, dma_dut.dma_memory_request);
         end else begin
-            $display("PASS %m: memory_request = 0x%0h", memory_request);
+            $display("PASS %m: dma_memory_request = 0x%0h",
+                     dma_dut.dma_memory_request);
         end
     end
 endtask
 
-task check_memory_start_address;
+task check_dma_memory_start_address;
     input [9:0] expected;
     begin
-        if (memory_start_address !== expected) begin
+        if (dma_dut.dma_memory_start_address !== expected) begin
             errors = errors + 1;
-            $display("FAIL %m: memory_start_address expected 0x%0h, got 0x%0h",
-                     expected, memory_start_address);
+            $display("FAIL %m: dma_memory_start_address expected 0x%0h, got 0x%0h",
+                     expected, dma_dut.dma_memory_start_address);
         end else begin
-            $display("PASS %m: memory_start_address = 0x%0h", memory_start_address);
+            $display("PASS %m: dma_memory_start_address = 0x%0h",
+                     dma_dut.dma_memory_start_address);
         end
     end
 endtask
 
-task check_memory_beat_count;
+task check_dma_memory_beat_count;
     input [3:0] expected;
     begin
-        if (memory_beat_count !== expected) begin
+        if (dma_dut.dma_memory_beat_count !== expected) begin
             errors = errors + 1;
-            $display("FAIL %m: memory_beat_count expected 0x%0h, got 0x%0h",
-                     expected, memory_beat_count);
+            $display("FAIL %m: dma_memory_beat_count expected 0x%0h, got 0x%0h",
+                     expected, dma_dut.dma_memory_beat_count);
         end else begin
-            $display("PASS %m: memory_beat_count = 0x%0h", memory_beat_count);
+            $display("PASS %m: dma_memory_beat_count = 0x%0h",
+                     dma_dut.dma_memory_beat_count);
         end
     end
 endtask
 
-task check_memory_write_data;
+task check_dma_memory_write_data;
     input [31:0] expected;
     begin
-        if (memory_write_data !== expected) begin
+        if (dma_dut.dma_memory_write_data !== expected) begin
             errors = errors + 1;
-            $display("FAIL %m: memory_write_data expected 0x%0h, got 0x%0h",
-                     expected, memory_write_data);
+            $display("FAIL %m: dma_memory_write_data expected 0x%0h, got 0x%0h",
+                     expected, dma_dut.dma_memory_write_data);
         end else begin
-            $display("PASS %m: memory_write_data = 0x%0h", memory_write_data);
+            $display("PASS %m: dma_memory_write_data = 0x%0h",
+                     dma_dut.dma_memory_write_data);
         end
     end
 endtask
 
-task check_memory_write_data_valid;
+task check_dma_memory_write_data_valid;
     input expected;
     begin
-        if (memory_write_data_valid !== expected) begin
+        if (dma_dut.dma_memory_write_data_valid !== expected) begin
             errors = errors + 1;
-            $display("FAIL %m: memory_write_data_valid expected 0x%0h, got 0x%0h",
-                     expected, memory_write_data_valid);
+            $display("FAIL %m: dma_memory_write_data_valid expected %b, got %b",
+                     expected, dma_dut.dma_memory_write_data_valid);
         end else begin
-            $display("PASS %m: memory_write_data_valid = 0x%0h", memory_write_data_valid);
+            $display("PASS %m: dma_memory_write_data_valid = %b",
+                     dma_dut.dma_memory_write_data_valid);
+        end
+    end
+endtask
+
+task check_dma_memory_write_ready;
+    input expected;
+    begin
+        if (dma_memory_write_ready !== expected) begin
+            errors = errors + 1;
+            $display("FAIL %m: dma_memory_write_ready expected %b, got %b",
+                     expected, dma_memory_write_ready);
+        end else begin
+            $display("PASS %m: dma_memory_write_ready = %b",
+                     dma_memory_write_ready);
         end
     end
 endtask

@@ -10,17 +10,19 @@ module dma_tb;
 	reg [9:0]  cpu_destination_start_address;
 	reg [3:0]  cpu_beat_count;
 
-	reg [31:0] memory_read_data;
-	reg        memory_ready;
+	reg [31:0] memory_dma_read_data;
+	reg        memory_dma_ready;
 	reg        memory_dma_valid;
+	reg        memory_dma_write_ready;
 
 	// DUT drives these signals
-	wire        memory_request_valid;
-	wire [1:0]  memory_request;
-	wire [9:0]  memory_start_address;
-	wire [3:0]  memory_beat_count;
-	wire [31:0] memory_write_data;
-	wire        memory_write_data_valid;
+	wire        dma_memory_request_valid;
+	wire [1:0]  dma_memory_request;
+	wire [9:0]  dma_memory_start_address;
+	wire [3:0]  dma_memory_beat_count;
+	wire [31:0] dma_memory_write_data;
+	wire        dma_memory_write_data_valid;
+	wire        dma_memory_write_ready;
 
 	wire        dma_cpu_command_ready;
 	wire        dma_memory_read_data_ready;
@@ -36,23 +38,25 @@ dma dma_dut (
     .cpu_destination_start_address(cpu_destination_start_address),
     .cpu_beat_count             (cpu_beat_count),
 
-    .memory_read_data           (memory_read_data),
-    .memory_ready               (memory_ready),
+    .memory_dma_read_data           (memory_dma_read_data),
+    .memory_dma_ready               (memory_dma_ready),
     .memory_dma_valid               (memory_dma_valid),
+    .memory_dma_write_ready         (memory_dma_write_ready),
 
-    .memory_request_valid       (memory_request_valid),
-    .memory_request             (memory_request),
-    .memory_start_address       (memory_start_address),
-    .memory_beat_count          (memory_beat_count),
-    .memory_write_data          (memory_write_data),
-    .memory_write_data_valid    (memory_write_data_valid),
+    .dma_memory_request_valid       (dma_memory_request_valid),
+    .dma_memory_request             (dma_memory_request),
+    .dma_memory_start_address       (dma_memory_start_address),
+    .dma_memory_beat_count          (dma_memory_beat_count),
+    .dma_memory_write_data          (dma_memory_write_data),
+    .dma_memory_write_data_valid    (dma_memory_write_data_valid),
+    .dma_memory_write_ready         (dma_memory_write_ready),
 
     .dma_cpu_command_ready      (dma_cpu_command_ready),
     .dma_memory_read_data_ready (dma_memory_read_data_ready)
 );	
 `include "dma_tasks.vh"	
 	
-//memory_request
+//dma_memory_request
 localparam REQUEST_NOTHING = 2'b00;
 localparam READ = 2'b01;
 localparam WRITE = 2'b10;
@@ -89,6 +93,7 @@ task request_and_check;
 	input [1:0] test_memory_not_ready_cycle;
 	integer i;
 	integer j;
+	integer k;
 		
 	begin
 	
@@ -102,12 +107,12 @@ task request_and_check;
 		
 		$display("dma In idle state, cpu setting request right now");
 		check_dma_state(IDLE);
-		check_memory_request_valid(1'd0);
-		check_memory_request(REQUEST_NOTHING);
-		check_memory_start_address(10'd0);
-		check_memory_beat_count(4'd0);
-		check_memory_write_data(DEFAULT_VALUE);
-		check_memory_write_data_valid(1'd0);
+		check_dma_memory_request_valid(1'd0);
+		check_dma_memory_request(REQUEST_NOTHING);
+		check_dma_memory_start_address(10'd0);
+		check_dma_memory_beat_count(4'd0);
+		check_dma_memory_write_data(DEFAULT_VALUE);
+		check_dma_memory_write_data_valid(1'd0);
 		check_dma_cpu_command_ready(1'd1);
 		check_dma_memory_read_data_ready(1'd0);
 		check_counter_beat(4'd0);
@@ -120,12 +125,12 @@ task request_and_check;
 			
 				$display("dma in first cycle of START_READ now");
 				check_dma_state(START_READ);
-				check_memory_request_valid(1'd1);
-				check_memory_request(READ);
-				check_memory_start_address(test_cpu_source_start_address);
-				check_memory_beat_count(test_cpu_beat_count);
-				check_memory_write_data(DEFAULT_VALUE);
-				check_memory_write_data_valid(1'd0);
+				check_dma_memory_request_valid(1'd1);
+				check_dma_memory_request(READ);
+				check_dma_memory_start_address(test_cpu_source_start_address);
+				check_dma_memory_beat_count(test_cpu_beat_count);
+				check_dma_memory_write_data(DEFAULT_VALUE);
+				check_dma_memory_write_data_valid(1'd0);
 				check_dma_cpu_command_ready(1'd0);
 				check_dma_memory_read_data_ready(1'd0);
 				check_counter_beat(4'd0);
@@ -134,29 +139,29 @@ task request_and_check;
 					#1;
 					$display("dma in START_READ now waiting for memory to be ready");
 					check_dma_state(START_READ);
-					check_memory_request_valid(1'd1);
-					check_memory_request(READ);
-					check_memory_start_address(test_cpu_source_start_address);
-					check_memory_beat_count(test_cpu_beat_count);
-					check_memory_write_data(DEFAULT_VALUE);
-					check_memory_write_data_valid(1'd0);
+					check_dma_memory_request_valid(1'd1);
+					check_dma_memory_request(READ);
+					check_dma_memory_start_address(test_cpu_source_start_address);
+					check_dma_memory_beat_count(test_cpu_beat_count);
+					check_dma_memory_write_data(DEFAULT_VALUE);
+					check_dma_memory_write_data_valid(1'd0);
 					check_dma_cpu_command_ready(1'd0);
 					check_dma_memory_read_data_ready(1'd0);
 					check_counter_beat(4'd0);
 				end
 				
-				memory_ready = 1'd1;
+				memory_dma_ready = 1'd1;
 				@(posedge clock);
 				#1;
-				memory_ready = 1'd0;
+				memory_dma_ready = 1'd0;
 				$display("dma in first cycle of WAIT_MEMORY_READ now");			
 				check_dma_state(WAIT_MEMORY_READ);
-				check_memory_request_valid(1'd0);
-				check_memory_request(READ);
-				check_memory_start_address(test_cpu_source_start_address);
-				check_memory_beat_count(test_cpu_beat_count);
-				check_memory_write_data(DEFAULT_VALUE);
-				check_memory_write_data_valid(1'd0);
+				check_dma_memory_request_valid(1'd0);
+				check_dma_memory_request(READ);
+				check_dma_memory_start_address(test_cpu_source_start_address);
+				check_dma_memory_beat_count(test_cpu_beat_count);
+				check_dma_memory_write_data(DEFAULT_VALUE);
+				check_dma_memory_write_data_valid(1'd0);
 				check_dma_cpu_command_ready(1'd0);
 				check_dma_memory_read_data_ready(1'd1);
 				check_counter_beat(4'd0);			
@@ -169,31 +174,32 @@ task request_and_check;
 					for( i =0; i< MEMORY_PROCESSING_CYCLES; i = i+1) begin
 							$display("dma in WAIT_MEMORY_READ now waiting for memory to send back data");
 							check_dma_state(WAIT_MEMORY_READ);
-							check_memory_request_valid(1'd0);
-							check_memory_request(READ);
-							check_memory_start_address(test_cpu_source_start_address);
-							check_memory_beat_count(test_cpu_beat_count);
-							check_memory_write_data(DEFAULT_VALUE);
-							check_memory_write_data_valid(1'd0);
+							check_dma_memory_request_valid(1'd0);
+							check_dma_memory_request(READ);
+							check_dma_memory_start_address(test_cpu_source_start_address);
+							check_dma_memory_beat_count(test_cpu_beat_count);
+							check_dma_memory_write_data(DEFAULT_VALUE);
+							check_dma_memory_write_data_valid(1'd0);
 							check_dma_cpu_command_ready(1'd0);
 							check_dma_memory_read_data_ready(1'd1);
 							check_counter_beat(j);	
 					
 						if(i == MEMORY_PROCESSING_CYCLES - 1) begin
 							memory_dma_valid = 1'd1;
-							memory_read_data = j;
+							memory_dma_read_data = j;
+							//dma_memory_read_data_ready = 1 here
 							@(posedge clock);
 							#1;
 							
 							if(j < test_cpu_beat_count - 1) begin
 								$display("dma in WAIT_MEMORY_READ just receive data this cycle");
 								check_dma_state(WAIT_MEMORY_READ);
-								check_memory_request_valid(1'd0);
-								check_memory_request(READ);
-								check_memory_start_address(test_cpu_source_start_address);
-								check_memory_beat_count(test_cpu_beat_count);
-								check_memory_write_data(DEFAULT_VALUE);
-								check_memory_write_data_valid(1'd0);
+								check_dma_memory_request_valid(1'd0);
+								check_dma_memory_request(READ);
+								check_dma_memory_start_address(test_cpu_source_start_address);
+								check_dma_memory_beat_count(test_cpu_beat_count);
+								check_dma_memory_write_data(DEFAULT_VALUE);
+								check_dma_memory_write_data_valid(1'd0);
 								check_dma_cpu_command_ready(1'd0);
 								check_dma_memory_read_data_ready(1'd1);
 								check_memory(j,j);
@@ -203,12 +209,12 @@ task request_and_check;
 							else if(j ==test_cpu_beat_count - 1) begin//after last beat
 								$display("dma in first cycle of START_WRITE after receiving last beat in WAIT_MEMORY_READ");
 								check_dma_state(START_WRITE);
-								check_memory_request_valid(1'd0);
-								check_memory_request(READ);
-								check_memory_start_address(test_cpu_source_start_address);
-								check_memory_beat_count(test_cpu_beat_count);
-								check_memory_write_data(DEFAULT_VALUE);
-								check_memory_write_data_valid(1'd0);
+								check_dma_memory_request_valid(1'd0);
+								check_dma_memory_request(READ);
+								check_dma_memory_start_address(test_cpu_source_start_address);
+								check_dma_memory_beat_count(test_cpu_beat_count);
+								check_dma_memory_write_data(DEFAULT_VALUE);
+								check_dma_memory_write_data_valid(1'd0);
 								check_dma_cpu_command_ready(1'd0);
 								check_dma_memory_read_data_ready(1'd0);
 								check_memory(j,j);
@@ -219,7 +225,7 @@ task request_and_check;
 						
 						else begin
 							memory_dma_valid = 1'd0;
-							memory_read_data = DEFAULT_VALUE;							
+							memory_dma_read_data = DEFAULT_VALUE;							
 							@(posedge clock);
 							#1;						
 						end
@@ -232,33 +238,47 @@ task request_and_check;
 					#1;
 					$display("dma in START_WRITE now waiting for memory to be ready");
 					check_dma_state(START_WRITE);
-					check_memory_request_valid(1'd1);
-					check_memory_request(WRITE);
-					check_memory_start_address(test_cpu_destination_start_address);
-					check_memory_beat_count(test_cpu_beat_count);
-					check_memory_write_data(32'd0);// because first j = 0
-					check_memory_write_data_valid(1'd1);
+					check_dma_memory_request_valid(1'd1);
+					check_dma_memory_request(WRITE);
+					check_dma_memory_start_address(test_cpu_destination_start_address);
+					check_dma_memory_beat_count(test_cpu_beat_count);
+					check_dma_memory_write_data(32'd0);// because first j = 0
+					check_dma_memory_write_data_valid(1'd0);
 					check_dma_cpu_command_ready(1'd0);
 					check_dma_memory_read_data_ready(1'd0);
 					check_counter_beat(4'd0);
 				end
 				
-				memory_ready = 1'd1;
+				@(posedge clock);
+				#1;				
+				memory_dma_ready = 1'd1;
+				$display("dma in START_WRITE now waiting for memory to be ready");
+				check_dma_state(START_WRITE);
+				check_dma_memory_request_valid(1'd1);
+				check_dma_memory_request(WRITE);
+				check_dma_memory_start_address(test_cpu_destination_start_address);
+				check_dma_memory_beat_count(test_cpu_beat_count);
+				check_dma_memory_write_data(32'd0);// because first j = 0
+				check_dma_memory_write_data_valid(1'd0);
+				check_dma_cpu_command_ready(1'd0);
+				check_dma_memory_read_data_ready(1'd0);
+				check_counter_beat(4'd0);				
 				@(posedge clock);
 				#1;
-				memory_ready = 1'd0;
+				memory_dma_ready = 1'd0;
 				
 				$display("dma in first cycle of WAIT_MEMORY_WRITE,memory in first cycle after accepting request");
 				check_dma_state(WAIT_MEMORY_WRITE);
-				check_memory_request_valid(1'd0);
-				check_memory_request(WRITE);
-				check_memory_start_address(test_cpu_destination_start_address);
-				check_memory_beat_count(test_cpu_beat_count);
-				check_memory_write_data(32'd0);// because first j = 0
-				check_memory_write_data_valid(1'd1);
+				check_dma_memory_request_valid(1'd0);
+				check_dma_memory_request(WRITE);
+				check_dma_memory_start_address(test_cpu_destination_start_address);
+				check_dma_memory_beat_count(test_cpu_beat_count);
+				check_dma_memory_write_data(32'd0);// because first j = 0
+				check_dma_memory_write_data_valid(1'd0);
 				check_dma_cpu_command_ready(1'd0);
 				check_dma_memory_read_data_ready(1'd0);
 				check_counter_beat(4'd0);
+				check_dma_memory_write_ready(1'b1);
 				
 				
 				@(posedge clock);
@@ -268,49 +288,97 @@ task request_and_check;
 					for( i =0; i< MEMORY_PROCESSING_CYCLES; i = i+1) begin
 							$display("dma in WAIT_MEMORY_WRITE now waiting for memory to finishing writing data");
 							check_dma_state(WAIT_MEMORY_WRITE);
-							check_memory_request_valid(1'd0);
-							check_memory_request(WRITE);
-							check_memory_start_address(test_cpu_destination_start_address);
-							check_memory_beat_count(test_cpu_beat_count);
-							check_memory_write_data(j);
-							check_memory_write_data_valid(1'd1);
+							check_dma_memory_request_valid(1'd0);
+							check_dma_memory_request(WRITE);
+							check_dma_memory_start_address(test_cpu_destination_start_address);
+							check_dma_memory_beat_count(test_cpu_beat_count);
+							check_dma_memory_write_data(j);
+							check_dma_memory_write_data_valid(1'd0);
 							check_dma_cpu_command_ready(1'd0);
 							check_dma_memory_read_data_ready(1'd0);
 							check_counter_beat(j);	
+							check_dma_memory_write_ready(1'b1);
+												
 					
 						if(i == MEMORY_PROCESSING_CYCLES - 1) begin
+							$display("Memory finishes writing this cycle, dma_memory_write_ready =1 this cycle");
 							memory_dma_valid = 1'd1;
-							@(posedge clock);
-							#1;
-							
 							if(j < test_cpu_beat_count - 1) begin
-								$display("dma in WAIT_MEMORY_WRITE just finishing write this cycle");
+								for(k=0;k<test_memory_not_ready_cycle;k=k+1)begin
+								@(posedge clock);
+								#1;
+								memory_dma_valid = 1'd0;
+								memory_dma_write_ready=1'b0;
+								$display("dma in WAIT_MEMORY_WRITE holding write data since memory is busy");
 								check_dma_state(WAIT_MEMORY_WRITE);
-								check_memory_request_valid(1'd0);
-								check_memory_request(WRITE);
-								check_memory_start_address(test_cpu_destination_start_address);
-								check_memory_beat_count(test_cpu_beat_count);
-								check_memory_write_data(j+1);
-								check_memory_write_data_valid(1'd1);
+								check_dma_memory_request_valid(1'd0);
+								check_dma_memory_request(WRITE);
+								check_dma_memory_start_address(test_cpu_destination_start_address);
+								check_dma_memory_beat_count(test_cpu_beat_count);
+								check_dma_memory_write_data(j+1);
+								check_dma_memory_write_data_valid(1'd1);
 								check_dma_cpu_command_ready(1'd0);
 								check_dma_memory_read_data_ready(1'd0);
 								check_counter_beat(j+1);	
+								check_dma_memory_write_ready(1'b1);								
+
+							end
+								@(posedge clock);
+								#1;
+								$display("Memory is ready to accept write data");
+								memory_dma_valid = 1'd0;
+								memory_dma_write_ready=1'b1;	
+								check_dma_state(WAIT_MEMORY_WRITE);
+								check_dma_memory_request_valid(1'd0);
+								check_dma_memory_request(WRITE);
+								check_dma_memory_start_address(test_cpu_destination_start_address);
+								check_dma_memory_beat_count(test_cpu_beat_count);
+								check_dma_memory_write_data(j+1);
+								check_dma_memory_write_data_valid(1'd1);
+								check_dma_cpu_command_ready(1'd0);
+								check_dma_memory_read_data_ready(1'd0);
+								check_counter_beat(j+1);	
+								check_dma_memory_write_ready(1'b1);		
+								
+								@(posedge clock);
+								#1;	
+								$display("Memory accepts write data");
+								memory_dma_write_ready=1'b0;
+								
+								
+								$display("dma in WAIT_MEMORY_WRITE just finishing write this cycle");
+								check_dma_state(WAIT_MEMORY_WRITE);
+								check_dma_memory_request_valid(1'd0);
+								check_dma_memory_request(WRITE);
+								check_dma_memory_start_address(test_cpu_destination_start_address);
+								check_dma_memory_beat_count(test_cpu_beat_count);
+								check_dma_memory_write_data(j+1);
+								check_dma_memory_write_data_valid(1'd0);
+								check_dma_cpu_command_ready(1'd0);
+								check_dma_memory_read_data_ready(1'd0);
+								check_counter_beat(j+1);	
+								check_dma_memory_write_ready(1'b1);
 							end
 							
 							else if(j == test_cpu_beat_count - 1) begin//after last beat
+								@(posedge clock);
+								#1;
 								$display("dma in first cycle of FINISH after memory write last beat");
 								check_dma_state(FINISH);
-								check_memory_request_valid(1'd0);
-								check_memory_request(WRITE);
-								check_memory_start_address(test_cpu_destination_start_address);
-								check_memory_beat_count(test_cpu_beat_count);
-								check_memory_write_data(32'd0);
-								check_memory_write_data_valid(1'd0);
+								check_dma_memory_request_valid(1'd0);
+								check_dma_memory_request(WRITE);
+								check_dma_memory_start_address(test_cpu_destination_start_address);
+								check_dma_memory_beat_count(test_cpu_beat_count);
+								check_dma_memory_write_data(32'd0);
+								check_dma_memory_write_data_valid(1'd0);
 								check_dma_cpu_command_ready(1'd0);
 								check_dma_memory_read_data_ready(1'd0);
-								check_counter_beat(4'd0);								
+								check_counter_beat(4'd0);			
+								check_dma_memory_write_ready(1'b0);
 
 							end
+							
+
 						end
 						
 						else begin
@@ -327,14 +395,15 @@ task request_and_check;
 				#1;
 				$display("dma in first cycle of Idle after coming back from FINISH now");
 				check_dma_state(IDLE);
-				check_memory_request_valid(1'd0);
-				check_memory_request(REQUEST_NOTHING);
-				check_memory_start_address(10'd0);
-				check_memory_beat_count(4'd0);
-				check_memory_write_data(DEFAULT_VALUE);
-				check_memory_write_data_valid(1'd0);
+				check_dma_memory_request_valid(1'd0);
+				check_dma_memory_request(REQUEST_NOTHING);
+				check_dma_memory_start_address(10'd0);
+				check_dma_memory_beat_count(4'd0);
+				check_dma_memory_write_data(DEFAULT_VALUE);
+				check_dma_memory_write_data_valid(1'd0);
 				check_dma_cpu_command_ready(1'd1);
 				check_dma_memory_read_data_ready(1'd0);
+				check_dma_memory_write_ready(1'b0);	
 				check_counter_beat(4'd0);					
 			
 		
@@ -369,14 +438,17 @@ initial begin
 end
 
 initial begin
+
+
 	reset_n = 1'd0;
 	cpu_request_valid=1'd0;
 	cpu_source_start_address=10'd0;
 	cpu_destination_start_address=10'd0;
 	cpu_beat_count=4'd0;
-	memory_read_data=32'd0;
-	memory_ready=1'd0;
+	memory_dma_read_data=32'd0;	
+	memory_dma_ready=1'd0;
 	memory_dma_valid=1'd0;
+	memory_dma_write_ready=1'b0;
 	errors = 0;
 	
 	#1;
@@ -386,13 +458,13 @@ initial begin
 // test_cpu_destination_start_address (10 bits), test_cpu_beat_count (4 bits), test_memory_not_ready_cycle (2 bits)
 	
 	request_and_check(1'd1, 10'd0, 10'd24,4'd3,2'd1);
-
-	
+	request_and_check(1'd1, 10'd5, 10'd24,4'd2,2'd2);
+	//request_and_check(1'd1, 10'd0, 10'd24,4'd3,2'd1);	
 	
 	if (errors == 0)
         $display("ALL dma_tb TESTS PASSED");
    else
-        $display("%0d dma_tbTESTS FAILED", errors);
+        $display("%0d dma_tb TESTS FAILED", errors);
 
    $finish;	
 
@@ -403,14 +475,6 @@ end
 
 
 endmodule
-
-
-
-
-
-
-
-
 
 
 
