@@ -49,6 +49,8 @@ localparam FINISH            = 3'd5;
 
 localparam DEFAULT_VALUE = 32'hFFFFFFFF;
 
+
+
 always @(posedge clock or negedge reset_n) begin
     if (!reset_n) begin
         dma_state<= IDLE;
@@ -110,7 +112,7 @@ always @(posedge clock or negedge reset_n) begin
                 dma_memory_start_address<= cpu_destination_start_address_temp;
                 dma_memory_beat_count<= cpu_beat_count_temp;
                 dma_memory_write_data<= memory[counter_beat];
-                dma_memory_write_data_valid<= 1'b0;
+                dma_memory_write_data_valid<= 1'b0;//only applicable for beat 1 and up
 
                 if (dma_memory_request_valid && memory_dma_ready) begin
                     counter_beat<= 4'd0;
